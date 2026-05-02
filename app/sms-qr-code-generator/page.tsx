@@ -18,6 +18,8 @@ export default function Page() {
     <NichePage
       type="sms"
       lockType
+      path="/sms-qr-code-generator"
+      breadcrumbName="SMS"
       h1="SMS QR Code Generator"
       intro="Make it one tap for someone to text you or sign up for an SMS keyword campaign. The phone opens its messaging app with the recipient and message body already filled in."
       body={

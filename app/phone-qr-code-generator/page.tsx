@@ -18,6 +18,8 @@ export default function Page() {
     <NichePage
       type="phone"
       lockType
+      path="/phone-qr-code-generator"
+      breadcrumbName="Phone"
       h1="Phone QR Code Generator"
       intro="Encode a phone number as a QR code. When scanned, the phone opens the dialer with the number pre-filled — one tap to call."
       body={

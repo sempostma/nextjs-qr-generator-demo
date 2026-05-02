@@ -17,6 +17,8 @@ export default function Page() {
     <NichePage
       type="bitcoin"
       lockType
+      path="/bitcoin-qr-code-generator"
+      breadcrumbName="Bitcoin"
       h1="Bitcoin QR Code Generator"
       intro="Generate a Bitcoin payment QR code. Scan with any major wallet — Cash App, BlueWallet, Muun, Wallet of Satoshi, Sparrow, Electrum and many others recognize the format and pre-fill the amount."
       body={

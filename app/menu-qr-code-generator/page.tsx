@@ -18,6 +18,8 @@ export default function Page() {
     <NichePage
       type="url"
       lockType
+      path="/menu-qr-code-generator"
+      breadcrumbName="Restaurant menu"
       h1="Restaurant Menu QR Code Generator"
       intro="Generate a free QR code for your restaurant, café or bar menu. Diners scan with their phone camera and your menu opens instantly — no app, no sign-up, no per-scan fee."
       body={

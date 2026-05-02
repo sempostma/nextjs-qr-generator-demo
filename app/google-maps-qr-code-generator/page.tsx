@@ -17,6 +17,8 @@ export default function Page() {
     <NichePage
       type="geo"
       lockType
+      path="/google-maps-qr-code-generator"
+      breadcrumbName="Google Maps / Location"
       h1="Google Maps & Location QR Code Generator"
       intro="Print a QR that drops a pin on a specific location. Scan and the user&rsquo;s phone opens Google Maps or the native maps app with directions ready to go."
       body={

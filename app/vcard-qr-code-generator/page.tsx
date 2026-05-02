@@ -18,6 +18,8 @@ export default function Page() {
     <NichePage
       type="contact"
       lockType
+      path="/vcard-qr-code-generator"
+      breadcrumbName="vCard"
       h1="vCard QR Code Generator"
       intro="Turn your business card into a tap-and-save digital contact. Scan once and the recipient&rsquo;s phone offers to add your name, phone, email, organization and address straight to its contacts."
       body={

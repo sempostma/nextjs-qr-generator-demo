@@ -17,6 +17,8 @@ export default function Page() {
     <NichePage
       type="url"
       lockType
+      path="/pdf-qr-code-generator"
+      breadcrumbName="PDF"
       h1="PDF QR Code Generator"
       intro="Print less, share more. Generate a QR code that opens any PDF — manual, brochure, datasheet, menu, contract — straight on the user&rsquo;s phone."
       body={

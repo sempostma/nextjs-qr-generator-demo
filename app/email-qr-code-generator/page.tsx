@@ -18,6 +18,8 @@ export default function Page() {
     <NichePage
       type="email"
       lockType
+      path="/email-qr-code-generator"
+      breadcrumbName="Email"
       h1="Email QR Code Generator"
       intro="Make it effortless for someone to email you. The QR code opens their default mail app with the recipient, subject and body already filled in — they just hit send."
       body={

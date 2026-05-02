@@ -17,6 +17,8 @@ export default function Page() {
     <NichePage
       type="url"
       lockType
+      path="/paypal-qr-code-generator"
+      breadcrumbName="PayPal"
       h1="PayPal QR Code Generator"
       intro="Get paid faster — print or display a PayPal.Me QR code so customers can pay you with a tap. Works with personal and business PayPal accounts at no cost to either side."
       body={

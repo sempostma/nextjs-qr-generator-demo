@@ -20,6 +20,40 @@ const niches = [
   { href: '/phone-qr-code-generator', label: 'Phone QR code', desc: 'Tap to call — perfect for service businesses.', icon: Phone },
 ]
 
+const howToJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'How to make a QR code',
+  description: 'Generate a free, custom QR code for a URL, WiFi network, vCard, calendar event, location, Bitcoin payment, SMS, email or phone number.',
+  totalTime: 'PT1M',
+  step: [
+    {
+      '@type': 'HowToStep',
+      position: 1,
+      name: 'Pick the QR type',
+      text: 'Choose the type of content the QR will encode — URL, WiFi, vCard, calendar event, location, Bitcoin, plain text, SMS, email or phone.',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 2,
+      name: 'Fill in the fields',
+      text: 'Enter the relevant fields for the chosen type. The QR code re-renders live as you type — there is no submit step.',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 3,
+      name: 'Customize appearance',
+      text: 'Optionally change foreground / background colors, scale, margin, transparency, and upload a logo to embed in the center.',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 4,
+      name: 'Download',
+      text: 'Click the Download button to save as PNG, or right-click the QR canvas to copy or save as SVG.',
+    },
+  ],
+}
+
 export default function Home() {
   return (
     <div className="font-[family-name:var(--font-geist-sans)]">
@@ -77,6 +111,11 @@ export default function Home() {
             <li>Right-click the QR code to save it, or click the area to copy to clipboard.</li>
           </ol>
         </section>
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
+        />
       </main>
     </div>
   )

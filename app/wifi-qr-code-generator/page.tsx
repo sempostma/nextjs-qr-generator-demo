@@ -19,6 +19,8 @@ export default function Page() {
     <NichePage
       type="wifi"
       lockType
+      path="/wifi-qr-code-generator"
+      breadcrumbName="WiFi"
       h1="WiFi QR Code Generator"
       intro="Generate a free WiFi QR code in seconds. Guests scan with their phone camera and join your network without typing the password — perfect for cafés, holiday rentals, offices and home networks."
       body={

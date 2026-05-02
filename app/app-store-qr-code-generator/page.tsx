@@ -17,6 +17,8 @@ export default function Page() {
     <NichePage
       type="url"
       lockType
+      path="/app-store-qr-code-generator"
+      breadcrumbName="App Store"
       h1="App Store QR Code Generator"
       intro="Get more app installs from offline channels. A scannable QR code on a billboard, in-store display, or trade-show booth turns every passer-by into a one-tap download."
       body={

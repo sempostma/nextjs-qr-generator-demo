@@ -17,6 +17,8 @@ export default function Page() {
     <NichePage
       type="event"
       lockType
+      path="/calendar-event-qr-code-generator"
+      breadcrumbName="Calendar event"
       h1="Calendar Event QR Code Generator"
       intro="Turn an event into a single tap. Scan the QR code and the phone offers to add the event — title, location, start, end and description — straight to the user&rsquo;s calendar app."
       body={

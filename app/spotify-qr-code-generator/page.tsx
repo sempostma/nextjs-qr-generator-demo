@@ -17,6 +17,8 @@ export default function Page() {
     <NichePage
       type="url"
       lockType
+      path="/spotify-qr-code-generator"
+      breadcrumbName="Spotify"
       h1="Spotify QR Code Generator"
       intro="Share music with a single scan. Generate a QR code from any Spotify link — track, album, playlist, podcast or artist — and print it anywhere your audience will see it."
       body={

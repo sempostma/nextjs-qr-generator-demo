@@ -18,6 +18,8 @@ export default function Page() {
     <NichePage
       type="url"
       lockType
+      path="/url-qr-code-generator"
+      breadcrumbName="URL"
       h1="URL QR Code Generator"
       intro="Turn any link into a scannable QR code. Append UTM source, medium, campaign, term and content so Google Analytics, GA4 and any other analytics platform can attribute the offline scan back to the campaign."
       body={
