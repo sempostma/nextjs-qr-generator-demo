@@ -56,6 +56,10 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+export const viewport = {
+  themeColor: '#000000',
+};
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "WebApplication",
@@ -96,21 +100,43 @@ export default function RootLayout({
               <Link href="/wifi-qr-code-generator" className="hover:text-foreground">WiFi</Link>
               <Link href="/vcard-qr-code-generator" className="hover:text-foreground">vCard</Link>
               <Link href="/url-qr-code-generator" className="hover:text-foreground">URL</Link>
+              <Link href="/calendar-event-qr-code-generator" className="hover:text-foreground">Event</Link>
+              <Link href="/google-maps-qr-code-generator" className="hover:text-foreground">Location</Link>
+              <Link href="/bitcoin-qr-code-generator" className="hover:text-foreground">Bitcoin</Link>
               <Link href="/menu-qr-code-generator" className="hover:text-foreground">Menu</Link>
-              <Link href="/email-qr-code-generator" className="hover:text-foreground">Email</Link>
-              <Link href="/sms-qr-code-generator" className="hover:text-foreground">SMS</Link>
-              <Link href="/phone-qr-code-generator" className="hover:text-foreground">Phone</Link>
+              <Link href="/pdf-qr-code-generator" className="hover:text-foreground">PDF</Link>
             </nav>
           </div>
         </header>
         {children}
         <footer className="border-t mt-16">
-          <div className="container max-w-screen-lg mx-auto px-4 py-6 text-sm text-muted-foreground flex flex-wrap gap-4 justify-between">
-            <p>&copy; {new Date().getFullYear()} QR Code Generator. Free to use.</p>
-            <p>
-              QR codes are generated entirely in your browser. No tracking of
-              the QR contents.
-            </p>
+          <div className="container max-w-screen-lg mx-auto px-4 py-6 text-sm text-muted-foreground space-y-4">
+            <nav className="flex flex-wrap gap-x-4 gap-y-1">
+              <Link href="/about" className="hover:text-foreground">About</Link>
+              <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+              <Link href="/terms" className="hover:text-foreground">Terms</Link>
+              <Link href="/wifi-qr-code-generator" className="hover:text-foreground">WiFi</Link>
+              <Link href="/vcard-qr-code-generator" className="hover:text-foreground">vCard</Link>
+              <Link href="/url-qr-code-generator" className="hover:text-foreground">URL</Link>
+              <Link href="/calendar-event-qr-code-generator" className="hover:text-foreground">Event</Link>
+              <Link href="/google-maps-qr-code-generator" className="hover:text-foreground">Location</Link>
+              <Link href="/bitcoin-qr-code-generator" className="hover:text-foreground">Bitcoin</Link>
+              <Link href="/paypal-qr-code-generator" className="hover:text-foreground">PayPal</Link>
+              <Link href="/spotify-qr-code-generator" className="hover:text-foreground">Spotify</Link>
+              <Link href="/app-store-qr-code-generator" className="hover:text-foreground">App Store</Link>
+              <Link href="/menu-qr-code-generator" className="hover:text-foreground">Menu</Link>
+              <Link href="/pdf-qr-code-generator" className="hover:text-foreground">PDF</Link>
+              <Link href="/email-qr-code-generator" className="hover:text-foreground">Email</Link>
+              <Link href="/sms-qr-code-generator" className="hover:text-foreground">SMS</Link>
+              <Link href="/phone-qr-code-generator" className="hover:text-foreground">Phone</Link>
+            </nav>
+            <div className="flex flex-wrap gap-4 justify-between">
+              <p>&copy; {new Date().getFullYear()} QR Code Generator. Free to use.</p>
+              <p>
+                QR codes are generated entirely in your browser. No tracking of
+                the QR contents.
+              </p>
+            </div>
           </div>
         </footer>
         <script
@@ -120,7 +146,7 @@ export default function RootLayout({
         {ADSENSE_CLIENT && (
           <Script
             async
-            strategy="afterInteractive"
+            strategy="lazyOnload"
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
             crossOrigin="anonymous"
           />

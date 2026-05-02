@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Mail, MessageSquare, Phone, User, Globe, Wifi, Type } from "lucide-react"
+import { Mail, MessageSquare, Phone, User, Globe, Wifi, Type, Calendar, MapPin, Bitcoin } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
 const InputField = ({
@@ -37,7 +37,7 @@ const InputField = ({
   </div>
 )
 
-export type QRType = 'url' | 'wifi' | 'contact' | 'plaintext' | 'sms' | 'email' | 'phone'
+export type QRType = 'url' | 'wifi' | 'contact' | 'event' | 'geo' | 'bitcoin' | 'plaintext' | 'sms' | 'email' | 'phone'
 
 interface QRInputsProps {
   onChange: (encodedResult: string) => void
@@ -99,6 +99,29 @@ export default function QRInputs({ name, onChange, defaultOption = 'url', lockOp
 
   const [phoneNumber, setPhoneNumber] = useState("")
 
+  const [event, setEvent] = useState({
+    title: "",
+    location: "",
+    description: "",
+    start: "",
+    end: "",
+    allDay: false,
+  })
+
+  const [geo, setGeo] = useState({
+    latitude: "",
+    longitude: "",
+    query: "",
+    mode: "geo" as "geo" | "maps",
+  })
+
+  const [bitcoin, setBitcoin] = useState({
+    address: "",
+    amount: "",
+    label: "",
+    message: "",
+  })
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const tabValue = useMemo(() => isOpen ? 'utm' : undefined, [isOpen])
@@ -156,6 +179,60 @@ END:VCARD`
     return `mailto:${email.address}?subject=${subject}&body=${body}`
   }
 
+  // vEvent escape: \ , ; and newlines
+  const escapeIcal = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
+
+  const formatIcalDate = (input: string, allDay: boolean) => {
+    if (!input) return ''
+    if (allDay) {
+      // input is yyyy-mm-dd
+      return input.replace(/-/g, '')
+    }
+    // input is yyyy-mm-ddThh:mm
+    const d = new Date(input)
+    if (isNaN(d.getTime())) return ''
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
+  }
+
+  const generateEvent = () => {
+    if (!event.title || !event.start) return ''
+    const dtStart = formatIcalDate(event.start, event.allDay)
+    const dtEnd = event.end ? formatIcalDate(event.end, event.allDay) : dtStart
+    if (!dtStart) return ''
+    const dateParam = event.allDay ? ';VALUE=DATE' : ''
+    const lines = ['BEGIN:VEVENT', `SUMMARY:${escapeIcal(event.title)}`]
+    if (event.location) lines.push(`LOCATION:${escapeIcal(event.location)}`)
+    if (event.description) lines.push(`DESCRIPTION:${escapeIcal(event.description)}`)
+    lines.push(`DTSTART${dateParam}:${dtStart}`)
+    lines.push(`DTEND${dateParam}:${dtEnd}`)
+    lines.push('END:VEVENT')
+    return lines.join('\n')
+  }
+
+  const generateGeo = () => {
+    if (geo.mode === 'maps') {
+      if (!geo.query && !(geo.latitude && geo.longitude)) return ''
+      if (geo.query) {
+        return `https://maps.google.com/?q=${encodeURIComponent(geo.query)}`
+      }
+      return `https://maps.google.com/?q=${encodeURIComponent(`${geo.latitude},${geo.longitude}`)}`
+    }
+    if (!geo.latitude || !geo.longitude) return ''
+    const q = geo.query ? `?q=${encodeURIComponent(geo.query)}` : ''
+    return `geo:${geo.latitude},${geo.longitude}${q}`
+  }
+
+  const generateBitcoin = () => {
+    if (!bitcoin.address) return ''
+    const params = new URLSearchParams()
+    if (bitcoin.amount) params.append('amount', bitcoin.amount)
+    if (bitcoin.label) params.append('label', bitcoin.label)
+    if (bitcoin.message) params.append('message', bitcoin.message)
+    const qs = params.toString()
+    return `bitcoin:${bitcoin.address}${qs ? `?${qs}` : ''}`
+  }
+
   const updateEncodedResult = () => {
     switch (selectedOption) {
       case 'url':
@@ -179,6 +256,15 @@ END:VCARD`
       case 'phone':
         setEncodedResult(phoneNumber ? `tel:${phoneNumber}` : '')
         break
+      case 'event':
+        setEncodedResult(generateEvent())
+        break
+      case 'geo':
+        setEncodedResult(generateGeo())
+        break
+      case 'bitcoin':
+        setEncodedResult(generateBitcoin())
+        break
       default:
         setEncodedResult('')
     }
@@ -192,7 +278,7 @@ END:VCARD`
   useEffect(() => {
     updateEncodedResult()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOption, url, utmParams, wifi, contact, plainText, sms, email, phoneNumber])
+  }, [selectedOption, url, utmParams, wifi, contact, plainText, sms, email, phoneNumber, event, geo, bitcoin])
 
   const handleContactChange = (field: keyof typeof contact) => (value: string) => {
     setContact(prev => ({ ...prev, [field]: value }))
@@ -220,10 +306,25 @@ END:VCARD`
     setWifi(prev => ({ ...prev, [field]: value }))
   }
 
+  const handleEventChange = <K extends keyof typeof event>(field: K) => (value: typeof event[K]) => {
+    setEvent(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleGeoChange = <K extends keyof typeof geo>(field: K) => (value: typeof geo[K]) => {
+    setGeo(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleBitcoinChange = (field: keyof typeof bitcoin) => (value: string) => {
+    setBitcoin(prev => ({ ...prev, [field]: value }))
+  }
+
   const options: { value: QRType; label: string; icon: typeof Globe }[] = [
     { value: "url", label: "URL", icon: Globe },
     { value: "wifi", label: "WiFi", icon: Wifi },
     { value: "contact", label: "Contact", icon: User },
+    { value: "event", label: "Event", icon: Calendar },
+    { value: "geo", label: "Location", icon: MapPin },
+    { value: "bitcoin", label: "Bitcoin", icon: Bitcoin },
     { value: "plaintext", label: "Plain Text", icon: Type },
     { value: "sms", label: "SMS", icon: MessageSquare },
     { value: "email", label: "Email", icon: Mail },
@@ -464,6 +565,92 @@ END:VCARD`
         {/* Phone Section */}
         <div style={{ display: selectedOption === 'phone' ? 'block' : 'none' }}>
           <InputField id="phone-number" label="Enter Phone Number" placeholder="+1 (555) 123-4567" type="tel" value={phoneNumber} onChange={setPhoneNumber} />
+        </div>
+
+        {/* Event Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'event' ? 'block' : 'none' }}>
+          <InputField id="event-title" label="Event title" placeholder="Birthday party" value={event.title} onChange={handleEventChange('title')} />
+          <InputField id="event-location" label="Location" placeholder="123 Main St, Springfield" value={event.location} onChange={handleEventChange('location')} />
+          <div className="space-y-2">
+            <Label htmlFor="event-description">Description</Label>
+            <Textarea
+              id="event-description"
+              placeholder="Bring snacks!"
+              className="min-h-[80px]"
+              value={event.description}
+              onChange={(e) => handleEventChange('description')(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 items-center">
+            <Switch
+              id="event-allday"
+              checked={event.allDay}
+              onCheckedChange={(v) => {
+                handleEventChange('allDay')(v)
+                handleEventChange('start')('')
+                handleEventChange('end')('')
+              }}
+            />
+            <Label htmlFor="event-allday">All-day event</Label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField
+              id="event-start"
+              label="Start"
+              placeholder=""
+              type={event.allDay ? 'date' : 'datetime-local'}
+              value={event.start}
+              onChange={handleEventChange('start')}
+            />
+            <InputField
+              id="event-end"
+              label="End"
+              placeholder=""
+              type={event.allDay ? 'date' : 'datetime-local'}
+              value={event.end}
+              onChange={handleEventChange('end')}
+            />
+          </div>
+          <p className="text-[0.8rem] text-muted-foreground">
+            Generates a vEvent QR code. Scanning prompts the user to add the event to their calendar (iOS, Android and most calendar apps).
+          </p>
+        </div>
+
+        {/* Geo / Location Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'geo' ? 'block' : 'none' }}>
+          <div className="space-y-2">
+            <Label htmlFor="geo-mode">QR target</Label>
+            <Select value={geo.mode} onValueChange={(v) => handleGeoChange('mode')(v as 'geo' | 'maps')}>
+              <SelectTrigger id="geo-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="geo">Native maps (geo: URI)</SelectItem>
+                <SelectItem value="maps">Google Maps URL</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[0.8rem] text-muted-foreground">
+              Native opens the user&rsquo;s default maps app. Google Maps always opens Google Maps in the browser or the app.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField id="geo-lat" label="Latitude" placeholder="52.3676" value={geo.latitude} onChange={handleGeoChange('latitude')} />
+            <InputField id="geo-lng" label="Longitude" placeholder="4.9041" value={geo.longitude} onChange={handleGeoChange('longitude')} />
+          </div>
+          <InputField id="geo-query" label="Place name (optional)" placeholder="Anne Frank House" value={geo.query} onChange={handleGeoChange('query')} />
+        </div>
+
+        {/* Bitcoin Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'bitcoin' ? 'block' : 'none' }}>
+          <InputField id="btc-address" label="Bitcoin address" placeholder="bc1q…" value={bitcoin.address} onChange={handleBitcoinChange('address')} />
+          <div className="grid grid-cols-2 gap-4">
+            <InputField id="btc-amount" label="Amount (BTC, optional)" placeholder="0.001" value={bitcoin.amount} onChange={handleBitcoinChange('amount')} />
+            <InputField id="btc-label" label="Label (optional)" placeholder="Coffee shop" value={bitcoin.label} onChange={handleBitcoinChange('label')} />
+          </div>
+          <InputField id="btc-message" label="Message (optional)" placeholder="Order #1234" value={bitcoin.message} onChange={handleBitcoinChange('message')} />
+          <p className="text-[0.8rem] text-muted-foreground">
+            BIP-21 compatible. Most Bitcoin wallets recognize the format and pre-fill amount and recipient.
+          </p>
         </div>
       </div>
     </div>

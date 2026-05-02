@@ -4,11 +4,12 @@ A free, open-source QR code generator that runs entirely in the browser. Demo: [
 
 ## Features
 
-- **QR types**: URL (with UTM tracking), WiFi, vCard / contact, plain text, SMS, email, phone.
+- **QR types**: URL (with UTM tracking), WiFi, vCard / contact, calendar event (vEvent), location (geo: URI or Google Maps), Bitcoin (BIP-21), plain text, SMS, email, phone.
 - **Customization**: foreground / background colors, transparent backgrounds, embedded logo with auto error-correction H, scale, margin.
 - **Export**: PNG (raster), SVG (vector), UTF-8 (terminal art).
 - **Privacy**: every QR code is generated client-side — nothing is uploaded.
-- **SEO landing pages** for each niche: `/wifi-qr-code-generator`, `/vcard-qr-code-generator`, `/url-qr-code-generator`, `/menu-qr-code-generator`, `/email-qr-code-generator`, `/sms-qr-code-generator`, `/phone-qr-code-generator`.
+- **SEO landing pages** (14): WiFi, vCard, URL, calendar event, location/Google Maps, Bitcoin, menu, PDF, PayPal, Spotify, App Store, email, SMS, phone.
+- **AdSense-ready compliance pages**: `/privacy`, `/terms`, `/about`, custom `404`, PWA manifest.
 
 ## Local development
 

@@ -1,13 +1,20 @@
 import Link from 'next/link'
 import QRCodeGenerator from './qr-code-generator'
 import AdSlot from '@/components/ad-slot'
-import { Wifi, User, Globe, Utensils, Mail, MessageSquare, Phone } from 'lucide-react'
+import { Wifi, User, Globe, Utensils, Mail, MessageSquare, Phone, Calendar, MapPin, Bitcoin, FileText, DollarSign, Music, Smartphone } from 'lucide-react'
 
 const niches = [
   { href: '/wifi-qr-code-generator', label: 'WiFi QR code', desc: 'Share your network — guests scan to join, no typing.', icon: Wifi },
   { href: '/vcard-qr-code-generator', label: 'vCard QR code', desc: 'Digital business card — scan to save your contact.', icon: User },
   { href: '/url-qr-code-generator', label: 'URL QR code', desc: 'Link to any web page, with optional UTM tracking.', icon: Globe },
+  { href: '/calendar-event-qr-code-generator', label: 'Event QR code', desc: 'Add an event to a calendar with one scan.', icon: Calendar },
+  { href: '/google-maps-qr-code-generator', label: 'Location QR code', desc: 'Drop a pin in Google Maps or the native maps app.', icon: MapPin },
+  { href: '/bitcoin-qr-code-generator', label: 'Bitcoin QR code', desc: 'BIP-21 payment QR with amount and label.', icon: Bitcoin },
   { href: '/menu-qr-code-generator', label: 'Menu QR code', desc: 'For restaurants, cafés and bars — one scan to the menu.', icon: Utensils },
+  { href: '/pdf-qr-code-generator', label: 'PDF QR code', desc: 'Manual, brochure, contract — share PDFs instantly.', icon: FileText },
+  { href: '/paypal-qr-code-generator', label: 'PayPal QR code', desc: 'Get paid with a PayPal.Me link.', icon: DollarSign },
+  { href: '/spotify-qr-code-generator', label: 'Spotify QR code', desc: 'Share a track, album or playlist.', icon: Music },
+  { href: '/app-store-qr-code-generator', label: 'App Store QR code', desc: 'Drive app installs from offline channels.', icon: Smartphone },
   { href: '/email-qr-code-generator', label: 'Email QR code', desc: 'Pre-fill recipient, subject and body in one tap.', icon: Mail },
   { href: '/sms-qr-code-generator', label: 'SMS QR code', desc: 'Pre-fill a text message to a number.', icon: MessageSquare },
   { href: '/phone-qr-code-generator', label: 'Phone QR code', desc: 'Tap to call — perfect for service businesses.', icon: Phone },
