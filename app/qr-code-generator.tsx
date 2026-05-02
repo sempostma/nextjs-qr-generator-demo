@@ -9,31 +9,16 @@ import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { AlertCircle, Download } from "lucide-react"
 import { useDebounce } from "@uidotdev/usehooks";
 import QRCode, { QRCodeOptions, QRCodeRenderersOptions } from 'qrcode'
-import { generateQRCode, State } from './actions'
-import { useFormState, useFormStatus } from 'react-dom'
 import { FieldValues, useForm, useFormContext, useWatch } from 'react-hook-form'
 import { centerImageWithClearArea, QRForm } from '@/lib/qr'
 import { z } from 'zod'
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { X } from "lucide-react";
-import QRInputs from './inputs'
-
-const initialState: State = {}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function SubmitButton() {
-  const { pending } = useFormStatus()
-
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending ? 'Generating...' : 'Generate QR Code'}
-    </Button>
-  )
-}
+import QRInputs, { QRType } from './inputs'
 
 interface FormFieldValuesDebouncedProps {
   onChange: (values: FieldValues) => void
@@ -75,8 +60,12 @@ const FormFieldLogoValues = () => {
   )
 }
 
-export default function QRCodeGenerator() {
-  const [state, formAction] = useFormState(generateQRCode, initialState)
+interface QRCodeGeneratorProps {
+  defaultType?: QRType
+  lockType?: boolean
+}
+
+export default function QRCodeGenerator({ defaultType = 'url', lockType = false }: QRCodeGeneratorProps = {}) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const form = useForm<z.infer<typeof QRForm>>({
@@ -197,8 +186,6 @@ export default function QRCodeGenerator() {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const tabValue = useMemo(() => isOpen ? 'advancedOptions' : undefined, [isOpen])
 
-  const hasErrors = state.errors && Object.keys(state.errors).length > 0
-
   return (
     <Card className="w-full">
       <CardHeader>
@@ -214,24 +201,8 @@ export default function QRCodeGenerator() {
             </AlertDescription>
           </Alert>
         )}
-        {hasErrors && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>
-              Please correct the following errors:
-              <ul className="list-disc list-inside mt-2">
-                {Object.entries(state.errors || {}).map(([field, errors]) => (
-                  <li key={field}>
-                    {field}: {errors.join(', ')}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
         <Form {...form}>
-          <form action={formAction} onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormFieldValuesDebounced onChange={() => {
               renderToCanvas(form.getValues())
                 .then(() => setRenderError(undefined))
@@ -241,7 +212,7 @@ export default function QRCodeGenerator() {
               control={form.control}
               name="input"
               render={({ field }) => (
-                <QRInputs onChange={field.onChange} name={field.name} />
+                <QRInputs onChange={field.onChange} name={field.name} defaultOption={defaultType} lockOption={lockType} />
               )} />
 
             <div className='flex flex-row gap-4'>
@@ -458,7 +429,10 @@ export default function QRCodeGenerator() {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-            {/* <SubmitButton /> */}
+            <Button type="submit" className="w-full" disabled={!form.watch('input')}>
+              <Download className="mr-2 h-4 w-4" />
+              Download QR Code
+            </Button>
           </form>
         </Form>
       </CardContent>
@@ -471,10 +445,11 @@ export default function QRCodeGenerator() {
               className="border border-gray-300 rounded-lg"
               title='Generated QR Code'
             />
-            </div>
-          <p className="pb-2 text-sm font-medium text-muted-foreground">Right click the image to save/copy to clipboard.</p>
-          {state.message && state.message.startsWith('Failed') && (
-            <p className="text-red-500">{state.message}</p>
+          </div>
+          {form.watch('input') ? (
+            <p className="pt-2 text-sm font-medium text-muted-foreground">Right-click the image to save or copy, or use the Download button above.</p>
+          ) : (
+            <p className="pt-2 text-sm font-medium text-muted-foreground">Fill in the fields above to generate your QR code.</p>
           )}
         </div>
       </CardFooter>

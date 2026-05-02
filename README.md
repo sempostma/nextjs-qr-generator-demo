@@ -1,94 +1,69 @@
 # QR Code Generator
 
-A powerful and flexible QR code generator web application available at [qr.esstudio.nl](https://qr.esstudio.nl). This tool allows you to create QR codes for various types of content including URLs, contact information, SMS messages, emails, and phone numbers.
+A free, open-source QR code generator that runs entirely in the browser. Demo: [qr.esstudio.nl](https://qr.esstudio.nl).
 
 ## Features
 
-- **Multiple Content Types Support:**
-  - URLs with UTM tracking parameters
-  - Contact information (vCard format)
-  - Plain text
-  - SMS messages
-  - Email links
-  - Phone numbers
+- **QR types**: URL (with UTM tracking), WiFi, vCard / contact, plain text, SMS, email, phone.
+- **Customization**: foreground / background colors, transparent backgrounds, embedded logo with auto error-correction H, scale, margin.
+- **Export**: PNG (raster), SVG (vector), UTF-8 (terminal art).
+- **Privacy**: every QR code is generated client-side — nothing is uploaded.
+- **SEO landing pages** for each niche: `/wifi-qr-code-generator`, `/vcard-qr-code-generator`, `/url-qr-code-generator`, `/menu-qr-code-generator`, `/email-qr-code-generator`, `/sms-qr-code-generator`, `/phone-qr-code-generator`.
 
-- **URL QR Codes:**
-  - Generate QR codes for any web address
-  - Add UTM tracking parameters:
-    - Source
-    - Medium
-    - Campaign
-    - Term
-    - Content
-  - Perfect for marketing campaigns and analytics
+## Local development
 
-- **Contact QR Codes:**
-  - Create vCards with comprehensive contact details:
-    - Name (Prefix, First Name, Last Name)
-    - Title and Organization
-    - Multiple phone numbers
-    - Email address
-    - Physical address
-    - Fax number
-  - Compatible with most contact management systems
+```bash
+npm install
+npm run dev
+```
 
-- **SMS QR Codes:**
-  - Pre-format SMS messages
-  - Include recipient number
-  - Automatically generates proper SMS format
+## Environment variables
 
-- **Email QR Codes:**
-  - Include recipient address
-  - Pre-filled subject line
-  - Pre-composed email body
-  - Direct mail client integration
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Canonical URL used in metadata, sitemap and robots. Defaults to `https://qr.esstudio.nl`. |
+| `NEXT_PUBLIC_ADSENSE_CLIENT` | Google AdSense publisher ID (e.g. `ca-pub-1234567890`). When unset, all `<AdSlot>`s render nothing in production. |
 
-## How to Use
+Drop these in `.env.local` for development.
 
-1. Visit [qr.esstudio.nl](https://qr.esstudio.nl)
-2. Select the type of QR code you want to create
-3. Fill in the required information
-4. The QR code will be generated automatically
-5. Scan the QR code with any mobile device to test
+## Deploying for free
 
-## Use Cases
+You don't need a paid domain — every option below gives you a free HTTPS URL that Google can index.
 
-- **Marketing Materials:**
-  - Add to business cards
-  - Include in print advertisements
-  - Place on product packaging
-  - Display on marketing collateral
+| Host | Free URL example | Notes |
+| --- | --- | --- |
+| **Vercel** | `your-project.vercel.app` | Recommended. Native Next.js. Push to GitHub → import in Vercel → done. |
+| **Netlify** | `your-project.netlify.app` | Works out of the box with the Next.js runtime. |
+| **Cloudflare Pages** | `your-project.pages.dev` | Use the `@cloudflare/next-on-pages` adapter. |
 
-- **Business Operations:**
-  - Share contact information quickly
-  - Provide easy access to digital content
-  - Track marketing campaign effectiveness
-  - Simplify customer communication
+Once deployed, set `NEXT_PUBLIC_SITE_URL` to the assigned URL so canonical tags, sitemap and JSON-LD use the right host.
 
-- **Personal Use:**
-  - Share your contact details
-  - Create quick links to social media profiles
-  - Generate easy-to-share phone numbers
-  - Create direct message links
+If/when you buy a real domain, point a CNAME at the host and update the env var — no code changes needed.
 
-## Technical Details
+## Monetization (Google AdSense)
 
-The QR code generator is built using:
-- Next.js for the frontend framework
-- React for UI components
-- Tailwind CSS for styling
-- shadcn/ui for UI components
+The app has ad slots wired up but no ads load until you provide a publisher ID:
 
-## Privacy
+1. Apply for [Google AdSense](https://adsense.google.com).
+2. Once approved, copy your publisher ID (`ca-pub-XXXXXXXXXXXXXXXX`).
+3. Add `NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-XXXXXXXXXXXXXXXX` to your hosting environment.
+4. In AdSense, create ad units for each placement (`home-top`, `home-mid`, `niche-top`, `niche-mid`) and replace the `slot` prop on each `<AdSlot>` with the real slot ID returned by AdSense — or pass slot IDs via env vars and read them in the components.
+5. Add the AdSense `ads.txt` line to `public/ads.txt`.
 
-- No data is stored on our servers
-- All QR code generation happens client-side
-- Your information remains private and secure
+The `<AdSlot>` component renders a labeled placeholder in development so you can see where ads will appear, and renders nothing in production until the publisher ID is set — so the app stays clean during AdSense review.
 
-## Support
+## SEO
 
-For support or feature requests, please create an issue on the GitHub repository or contact me through the website.
+Out of the box this build ships:
+
+- A keyword-targeted homepage and seven niche landing pages.
+- `app/sitemap.ts` and `app/robots.ts` (Next 14 file-based metadata).
+- JSON-LD `WebApplication` schema in the layout, `FAQPage` schema on every niche page.
+- Per-page `<title>`, `<meta description>`, OpenGraph and canonical tags.
+- Internal cross-linking between the homepage and niche pages, and from the global header.
+
+Submit `${NEXT_PUBLIC_SITE_URL}/sitemap.xml` to Google Search Console after deploy.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT
