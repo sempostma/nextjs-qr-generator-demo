@@ -100,6 +100,20 @@ export default function QRCodeGenerator() {
   const [width, setWidth] = useState(0)
 
   const renderToCanvas = useCallback(async (data: z.infer<typeof QRForm>) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const { input, logo } = data
+
+    if (!input) {
+      const ctx = canvas.getContext('2d')!
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      canvas.width = 0
+      canvas.height = 0
+      setWidth(0)
+      return false
+    }
+
     const options: QRCodeOptions = {
       version: data.qVersion,
       errorCorrectionLevel: data.logo ? 'H' : data.errorCorrection,
@@ -117,10 +131,6 @@ export default function QRCodeGenerator() {
 
     const scale = renderedOpts.scale!
     const margin = renderedOpts.margin!
-    const { input, logo } = data
-
-    const canvas = canvasRef.current
-    if (!canvas) return
 
     const qrOptions = { ...options, ...renderedOpts }
     const { modules: { size } } = QRCode.create(input, qrOptions)
@@ -130,12 +140,6 @@ export default function QRCodeGenerator() {
     canvas.height = width
 
     setWidth(width)
-
-    if (!input) {
-      // clear the canvas
-      const ctx = canvas.getContext('2d')!
-      ctx.clearRect(0, 0, width, width)
-    }
 
     await new Promise((resolve, reject) => {
       QRCode.toCanvas(canvas, input, qrOptions, function (error) {
