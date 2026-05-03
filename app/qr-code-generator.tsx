@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Download } from "lucide-react"
+import { AlertCircle, Copy, Check, FileImage, FileCode } from "lucide-react"
 import { useDebounce } from "@uidotdev/usehooks";
 import QRCode, { QRCodeOptions, QRCodeRenderersOptions } from 'qrcode'
 import { FieldValues, useForm, useFormContext, useWatch } from 'react-hook-form'
@@ -81,7 +81,6 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
       darkColor: '#000000',
       lightTransparent: true,
       darkTransparent: false,
-      outputType: 'png',
       logo: undefined
     },
   })
@@ -144,7 +143,6 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
 
           image.onload = function () {
             const { imageArea, clearedArea } = centerImageWithClearArea(size, image, 0.4)
-            console.log({ imageArea, clearedArea })
 
             ctx.clearRect(clearedArea.x * scale + margin * scale, clearedArea.y * scale + margin * scale, clearedArea.width * scale, clearedArea.height * scale);
             ctx.drawImage(image, imageArea.x * scale + margin * scale, imageArea.y * scale + margin * scale, imageArea.width * scale, imageArea.height * scale);
@@ -165,21 +163,63 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
     return false;
   }, [])
 
-  const downloadToCanvas = useCallback((filename: string) => {
-    if (!canvasRef.current) return
-    const dataURL = canvasRef.current.toDataURL("image/png");
-
-    // Create a temporary link element
-    const link = document.createElement("a");
-    link.href = dataURL;
+  const triggerDownload = (href: string, filename: string) => {
+    const link = document.createElement('a')
+    link.href = href
     link.download = filename
-    link.click();
+    link.click()
+  }
+
+  const downloadPng = useCallback(() => {
+    if (!canvasRef.current) return
+    triggerDownload(canvasRef.current.toDataURL('image/png'), `qr-code.png`)
+  }, [])
+
+  const downloadSvg = useCallback(async () => {
+    const data = form.getValues()
+    if (!data.input) return
+    const svg = await QRCode.toString(data.input, {
+      type: 'svg',
+      version: data.qVersion,
+      errorCorrectionLevel: data.logo ? 'H' : data.errorCorrection,
+      maskPattern: data.mask,
+      margin: data.margin,
+      color: {
+        light: data.lightTransparent ? '#0000' : data.lightColor,
+        dark: data.darkTransparent ? '#0000' : data.darkColor,
+      },
+    })
+    const blob = new Blob([svg], { type: 'image/svg+xml' })
+    const url = URL.createObjectURL(blob)
+    triggerDownload(url, 'qr-code.svg')
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }, [form])
+
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle')
+
+  const copyToClipboard = useCallback(async () => {
+    if (!canvasRef.current) return
+    try {
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvasRef.current!.toBlob((b) => resolve(b), 'image/png')
+      )
+      if (!blob) throw new Error('Could not create image blob')
+      if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+        throw new Error('Clipboard image API not available in this browser')
+      }
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+      setCopyState('copied')
+      setTimeout(() => setCopyState('idle'), 1800)
+    } catch {
+      setCopyState('error')
+      setTimeout(() => setCopyState('idle'), 2400)
+    }
   }, [])
 
   const onSubmit = useCallback(async (data: z.infer<typeof QRForm>) => {
     await renderToCanvas(data)
-    downloadToCanvas(`qr-${data.scale}.png`)
-  }, [renderToCanvas, downloadToCanvas])
+    downloadPng()
+  }, [renderToCanvas, downloadPng])
 
   const [renderError, setRenderError] = useState<string | undefined | Error>()
 
@@ -215,19 +255,17 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
                 <QRInputs onChange={field.onChange} name={field.name} defaultOption={defaultType} lockOption={lockType} />
               )} />
 
-            <div className='flex flex-row gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
               <FormField
                 control={form.control}
                 name="darkColor"
                 render={({ field }) => (
-                  <FormItem className='min-w-40'>
+                  <FormItem>
                     <FormLabel>Color</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter text or URL" {...field} type="color" />
+                      <Input {...field} type="color" className="h-10 cursor-pointer" />
                     </FormControl>
-                    <FormDescription>
-                      Hex Code: {field.value}
-                    </FormDescription>
+                    <FormDescription>{field.value.toUpperCase()}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -235,27 +273,26 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
                 control={form.control}
                 name="scale"
                 render={({ field }) => (
-                  <FormItem className='min-w-40'>
+                  <FormItem>
                     <FormLabel>Scale</FormLabel>
                     <FormControl>
                       <Slider
                         min={1}
                         max={40}
                         aria-valuemin={1}
-                        aria-valuemax={8}
+                        aria-valuemax={40}
                         aria-valuenow={field.value}
-                        aria-valuetext={`${field.value}`}
+                        aria-valuetext={`Scale ${field.value}`}
                         {...field}
                         onChange={undefined}
                         value={[field.value]}
                         onValueChange={([value]) => field.onChange(+value)}
+                        className="py-2"
                       />
                     </FormControl>
-                    {width && (
-                      <FormDescription>
-                        Width {width}px
-                      </FormDescription>
-                    )}
+                    <FormDescription>
+                      {width ? `${width}px wide` : `Pixel scale ${field.value}`}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -263,7 +300,7 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
                 control={form.control}
                 name="margin"
                 render={({ field }) => (
-                  <FormItem className='min-w-40'>
+                  <FormItem>
                     <FormLabel>Margin</FormLabel>
                     <FormControl>
                       <Slider
@@ -278,80 +315,71 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
                         value={[field.value]}
                         onChange={undefined}
                         onValueChange={([value]) => field.onChange(value)}
+                        className="py-2"
                       />
                     </FormControl>
-                    <FormDescription>
-                      Current value: {field.value}
-                    </FormDescription>
+                    <FormDescription>{field.value} module{field.value === 1 ? '' : 's'}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )} />
-
 
               <FormField
                 control={form.control}
                 name="logo"
                 render={({ field }) => (
-                  <FormItem className='min-w-40'>
+                  <FormItem>
                     <FormLabel>Logo</FormLabel>
-                    <div className='flex flex-row'>
+                    <div className='flex flex-row gap-1'>
                       <FormControl>
-                        <Input id="qr-logo" type="file" accept='image/*' onChange={e => field.onChange(e.target.files?.[0])} />
+                        <Input id="qr-logo" type="file" accept='image/*' onChange={e => field.onChange(e.target.files?.[0])} className="text-xs" />
                       </FormControl>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          field.onChange(undefined);
-                          (document.getElementById('qr-logo') as HTMLInputElement).value = ''
-                        }}
-                        aria-label="Delete"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      {field.value && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            field.onChange(undefined);
+                            (document.getElementById('qr-logo') as HTMLInputElement).value = ''
+                          }}
+                          aria-label="Remove logo"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                     <FormDescription>
-                      If you want to add your own logo, make sure to put the Error Correction Level to {"'"}H{"'"} (High).
+                      Embeds in the centre. Error correction is forced to High automatically.
                     </FormDescription>
                   </FormItem>
                 )} />
-
-
             </div>
 
             <Accordion value={tabValue} type="single">
               <AccordionItem value='advancedOptions'>
                 <AccordionTrigger onClick={() => setIsOpen(!isOpen)}>Advanced options</AccordionTrigger>
                 <AccordionContent forceMount={true} hidden={!isOpen}>
-                  <div className='flex flex-row gap-4 items-start'>
-
+                  <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-start pt-2'>
                     <FormField
                       control={form.control}
                       name="lightColor"
                       render={({ field }) => (
-                        <FormItem className='min-w-40'>
+                        <FormItem>
                           <FormLabel>Background Color</FormLabel>
                           <FormControl>
-                            <Input
-                              {...field}
-                              type="color"
-                            />
+                            <Input {...field} type="color" className="h-10 cursor-pointer" />
                           </FormControl>
-                          <FormDescription>
-                            Hex Code: {field.value}
-                          </FormDescription>
+                          <FormDescription>{field.value.toUpperCase()}</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )} />
-                    <div className='flex flex-col'>
-
+                    <div className='space-y-3'>
                       <FormField
                         control={form.control}
                         name="lightTransparent"
                         render={({ field }) => (
-                          <FormItem className='min-w-40 flex gap-2 items-center'>
-                            <FormLabel className='mt-1'>Transparent Background</FormLabel>
+                          <FormItem className='flex gap-3 items-center justify-between rounded-md border p-3'>
+                            <FormLabel className='m-0 cursor-pointer'>Transparent background</FormLabel>
                             <FormControl>
                               <Switch
                                 name={field.name}
@@ -366,8 +394,8 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
                         control={form.control}
                         name="darkTransparent"
                         render={({ field }) => (
-                          <FormItem className='min-w-40 flex gap-2 items-center'>
-                            <FormLabel className='mt-1'>Transparent Foreground</FormLabel>
+                          <FormItem className='flex gap-3 items-center justify-between rounded-md border p-3'>
+                            <FormLabel className='m-0 cursor-pointer'>Transparent foreground</FormLabel>
                             <FormControl>
                               <Switch
                                 name={field.name}
@@ -379,39 +407,16 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
                           </FormItem>
                         )} />
                     </div>
-
-                    <FormField
-                      control={form.control}
-                      name="outputType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Output Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <input type="hidden" name={field.name} value={field.value} />
-                            <FormControl>
-                              <SelectTrigger id="type">
-                                <SelectValue placeholder="Select output type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="png">PNG</SelectItem>
-                              <SelectItem value="svg">SVG</SelectItem>
-                              <SelectItem value="utf8">UTF8</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
                     <FormField
                       control={form.control}
                       name="errorCorrection"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Error Correction Level</FormLabel>
+                          <FormLabel>Error correction level</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <input type="hidden" name={field.name} value={field.value} />
                             <FormControl>
-                              <SelectTrigger id="type">
+                              <SelectTrigger id="error-correction">
                                 <SelectValue placeholder="Select error correction" />
                               </SelectTrigger>
                             </FormControl>
@@ -419,38 +424,47 @@ export default function QRCodeGenerator({ defaultType = 'url', lockType = false 
                               <FormFieldLogoValues />
                             </SelectContent>
                           </Select>
+                          <FormDescription>Higher levels survive more damage but take more space.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )} />
-
                   </div>
-
-
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-            <Button type="submit" className="w-full" disabled={!form.watch('input')}>
-              <Download className="mr-2 h-4 w-4" />
-              Download QR Code
-            </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <Button type="submit" className="w-full" disabled={!form.watch('input')}>
+                <FileImage className="mr-2 h-4 w-4" />
+                Download PNG
+              </Button>
+              <Button type="button" variant="outline" className="w-full" disabled={!form.watch('input')} onClick={downloadSvg}>
+                <FileCode className="mr-2 h-4 w-4" />
+                Download SVG
+              </Button>
+              <Button type="button" variant="outline" className="w-full" disabled={!form.watch('input')} onClick={copyToClipboard}>
+                {copyState === 'copied' ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                {copyState === 'copied' ? 'Copied!' : copyState === 'error' ? 'Copy failed' : 'Copy image'}
+              </Button>
+            </div>
           </form>
         </Form>
       </CardContent>
-      <CardFooter>
+      <CardFooter className="flex-col">
         <div className="w-full flex flex-col items-center justify-center">
-          <div>
+          <div className="rounded-lg bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-muted/40 to-transparent p-4 sm:p-6">
             <canvas
               key="canvas"
               ref={canvasRef}
-              className="border border-gray-300 rounded-lg"
+              className="rounded-md max-w-full h-auto"
+              style={{ imageRendering: 'pixelated' }}
               title='Generated QR Code'
             />
           </div>
-          {form.watch('input') ? (
-            <p className="pt-2 text-sm font-medium text-muted-foreground">Right-click the image to save or copy, or use the Download button above.</p>
-          ) : (
-            <p className="pt-2 text-sm font-medium text-muted-foreground">Fill in the fields above to generate your QR code.</p>
-          )}
+          <p className="pt-3 text-sm text-muted-foreground text-center">
+            {form.watch('input')
+              ? 'Use the buttons above, or right-click the image to copy.'
+              : 'Fill in the fields above to generate your QR code.'}
+          </p>
         </div>
       </CardFooter>
     </Card>
