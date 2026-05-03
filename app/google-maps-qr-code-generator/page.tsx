@@ -23,20 +23,23 @@ export default function Page() {
       intro="Print a QR that drops a pin on a specific location. Scan and the user&rsquo;s phone opens Google Maps or the native maps app with directions ready to go."
       body={
         <>
+          <h2>Three ways to set the location</h2>
+          <ol>
+            <li><strong>Type an address.</strong> Most natural — paste the street address, business name or landmark. The maps app on the scanner&rsquo;s phone resolves it.</li>
+            <li><strong>Use my location.</strong> One tap to drop a pin at exactly where you are right now. Great for &ldquo;meet me here&rdquo; signs.</li>
+            <li><strong>Coordinates (advanced).</strong> Paste latitude and longitude for pin-perfect accuracy — useful for trailheads, fields, off-map venues.</li>
+          </ol>
           <h2>Native maps vs. Google Maps URL</h2>
-          <p>
-            Two formats are supported:
-          </p>
           <ul>
             <li>
-              <strong>Native (geo: URI)</strong> opens the user&rsquo;s default
-              maps app — Apple Maps on iOS, Google Maps or whichever app is set
-              as default on Android. Best when the audience is mixed.
+              <strong>Google Maps URL</strong> (the default) opens Google Maps in
+              the browser or the app. Works reliably on iOS and Android.
             </li>
             <li>
-              <strong>Google Maps URL</strong> always opens Google Maps
-              (browser or app). Best when you want consistent rendering and
-              Google&rsquo;s place data.
+              <strong>Native (geo: URI)</strong> opens whatever maps app the user
+              has set as default — Apple Maps on iOS, Google or another mapping
+              app on Android. Most reliable when paired with explicit
+              coordinates.
             </li>
           </ul>
           <h2>Where to find latitude and longitude</h2>
