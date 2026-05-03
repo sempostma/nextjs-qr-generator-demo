@@ -24,6 +24,7 @@ npm run dev
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL used in metadata, sitemap and robots. Defaults to `https://qr.esstudio.nl`. |
 | `NEXT_PUBLIC_ADSENSE_CLIENT` | Google AdSense publisher ID (e.g. `ca-pub-1234567890`). When unset, all `<AdSlot>`s render nothing in production. |
+| `NEXT_PUBLIC_GA_ID` | Google Analytics 4 measurement ID (e.g. `G-XXXXXXXXXX`). When set, gtag.js is injected with IP anonymization and Consent Mode v2 default-denied for EEA/UK/CH. When unset, no analytics scripts ship. |
 
 Drop these in `.env.local` for development.
 

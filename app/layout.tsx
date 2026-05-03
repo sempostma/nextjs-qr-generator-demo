@@ -17,6 +17,7 @@ const geistMono = localFont({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://qr.esstudio.nl";
 const ADSENSE_CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
+const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -90,6 +91,37 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {GA_ID && (
+          <script
+            // Consent Mode v2 default — must run before gtag.js loads.
+            // EEA / UK / Switzerland visitors default to denied; rest of
+            // world defaults to granted. Hook a CMP banner up later via
+            // gtag('consent','update',{...}) to flip EEA visitors who opt in.
+            dangerouslySetInnerHTML={{
+              __html: `
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                window.gtag = gtag;
+                gtag('consent', 'default', {
+                  ad_storage: 'denied',
+                  ad_user_data: 'denied',
+                  ad_personalization: 'denied',
+                  analytics_storage: 'denied',
+                  wait_for_update: 500,
+                  region: ['EEA','GB','CH']
+                });
+                gtag('consent', 'default', {
+                  ad_storage: 'granted',
+                  ad_user_data: 'granted',
+                  ad_personalization: 'granted',
+                  analytics_storage: 'granted'
+                });
+              `,
+            }}
+          />
+        )}
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -150,6 +182,24 @@ export default function RootLayout({
             src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
             crossOrigin="anonymous"
           />
+        )}
+        {GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+              strategy="afterInteractive"
+              async
+            />
+            <Script id="ga-init" strategy="afterInteractive">
+              {`
+                gtag('js', new Date());
+                gtag('config', '${GA_ID}', {
+                  anonymize_ip: true,
+                  send_page_view: true
+                });
+              `}
+            </Script>
+          </>
         )}
       </body>
     </html>

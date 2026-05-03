@@ -43,14 +43,29 @@ export default function Privacy() {
       </p>
       <ul>
         <li>
+          <strong>Google Analytics 4</strong> measures aggregate visitor
+          counts, traffic sources and which pages are viewed. We enable IP
+          anonymization and use Google Consent Mode v2: in the EEA, UK and
+          Switzerland, analytics and advertising cookies default to{' '}
+          <em>denied</em> until you opt in. You can review and change
+          preferences in your browser at any time. Read Google&rsquo;s policy
+          at{' '}
+          <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">
+            policies.google.com/privacy
+          </a>
+          .
+        </li>
+        <li>
           <strong>Google AdSense</strong> serves ads on this site. AdSense uses
           cookies and similar technologies to personalize ads, measure
-          performance, and prevent fraud. You can opt out of personalized
-          advertising at{' '}
+          performance, and prevent fraud. The same Consent Mode v2 default
+          applies — EEA / UK / Swiss visitors see non-personalized ads unless
+          they opt in. You can opt out of personalized advertising globally
+          at{' '}
           <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">
             Google Ads Settings
           </a>
-          . Read Google&rsquo;s policy at{' '}
+          . Read the policy at{' '}
           <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">
             policies.google.com/technologies/ads
           </a>
