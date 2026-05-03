@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -10,6 +11,15 @@ import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Mail, MessageSquare, Phone, User, Globe, Wifi, Type, Calendar, MapPin, Bitcoin, LocateFixed, Loader2 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+
+const MapPicker = dynamic(() => import('@/components/map-picker'), {
+  ssr: false,
+  loading: () => (
+    <div className="rounded-md border h-[280px] flex items-center justify-center text-sm text-muted-foreground">
+      Loading map…
+    </div>
+  ),
+})
 
 const InputField = ({
   id,
@@ -112,9 +122,17 @@ export default function QRInputs({ name, onChange, defaultOption = 'url', lockOp
   const [geo, setGeo] = useState({
     latitude: "",
     longitude: "",
-    query: "",
+    street: "",
+    city: "",
+    postalCode: "",
+    country: "",
     mode: "maps" as "geo" | "maps",
   })
+
+  const formatGeoAddress = () => {
+    const cityLine = [geo.postalCode, geo.city].filter(Boolean).join(' ')
+    return [geo.street, cityLine, geo.country].filter(Boolean).join(', ')
+  }
 
   const [geoStatus, setGeoStatus] = useState<{ kind: 'idle' | 'loading' | 'error' | 'success'; message?: string }>({ kind: 'idle' })
 
@@ -243,27 +261,26 @@ END:VCARD`
 
   const generateGeo = () => {
     const hasCoords = !!geo.latitude && !!geo.longitude
-    const hasQuery = !!geo.query.trim()
-    if (!hasCoords && !hasQuery) return ''
+    const address = formatGeoAddress()
+    const hasAddress = !!address
+    if (!hasCoords && !hasAddress) return ''
 
     if (geo.mode === 'maps') {
-      // Coordinates with optional place name win for accuracy; otherwise free-text query.
       const target = hasCoords
-        ? hasQuery
-          ? `${geo.latitude},${geo.longitude} (${geo.query})`
+        ? hasAddress
+          ? `${geo.latitude},${geo.longitude} (${address})`
           : `${geo.latitude},${geo.longitude}`
-        : geo.query
+        : address
       return `https://maps.google.com/?q=${encodeURIComponent(target)}`
     }
 
-    // geo: URI — RFC 5870. With coordinates, optionally tag with ?q=name.
     if (hasCoords) {
-      const q = hasQuery ? `?q=${encodeURIComponent(geo.query)}` : ''
+      const q = hasAddress ? `?q=${encodeURIComponent(address)}` : ''
       return `geo:${geo.latitude},${geo.longitude}${q}`
     }
     // Address-only fallback. Android maps app resolves geo:0,0?q=ADDRESS;
     // not all iOS clients do, so we encode for best-effort compatibility.
-    return `geo:0,0?q=${encodeURIComponent(geo.query)}`
+    return `geo:0,0?q=${encodeURIComponent(address)}`
   }
 
   const generateBitcoin = () => {
@@ -661,41 +678,45 @@ END:VCARD`
 
         {/* Geo / Location Section */}
         <div className="space-y-4" style={{ display: selectedOption === 'geo' ? 'block' : 'none' }}>
-          <div className="space-y-2">
-            <Label htmlFor="geo-query">Address or place name</Label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                id="geo-query"
-                placeholder="350 5th Ave, New York, NY"
-                value={geo.query}
-                onChange={(e) => handleGeoChange('query')(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={useMyLocation}
-                disabled={geoStatus.kind === 'loading'}
-                className="sm:w-auto"
-              >
-                {geoStatus.kind === 'loading' ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <LocateFixed className="h-4 w-4" />
-                )}
-                <span className="ml-2">Use my location</span>
-              </Button>
-            </div>
-            {geoStatus.kind === 'error' && (
-              <p className="text-[0.8rem] text-destructive">{geoStatus.message}</p>
-            )}
-            {geoStatus.kind === 'success' && (
-              <p className="text-[0.8rem] text-muted-foreground">{geoStatus.message}</p>
-            )}
-            <p className="text-[0.8rem] text-muted-foreground">
-              Type any address, landmark or business name. The maps app on the scanner&rsquo;s phone will resolve it. For pin-perfect accuracy, use the location button or open Advanced and paste coordinates.
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <InputField id="geo-street" label="Street &amp; number" placeholder="350 5th Ave" value={geo.street} onChange={handleGeoChange('street')} />
+            <InputField id="geo-city" label="City" placeholder="New York" value={geo.city} onChange={handleGeoChange('city')} />
+            <InputField id="geo-postal" label="Postal code" placeholder="10118" value={geo.postalCode} onChange={handleGeoChange('postalCode')} />
+            <InputField id="geo-country" label="Country" placeholder="United States" value={geo.country} onChange={handleGeoChange('country')} />
           </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[0.8rem] text-muted-foreground">
+              Tap or drag the pin on the map to drop the QR code on an exact location.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={useMyLocation}
+              disabled={geoStatus.kind === 'loading'}
+            >
+              {geoStatus.kind === 'loading' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LocateFixed className="h-4 w-4" />
+              )}
+              <span className="ml-2">Use my location</span>
+            </Button>
+          </div>
+
+          <MapPicker
+            lat={geo.latitude ? parseFloat(geo.latitude) : null}
+            lng={geo.longitude ? parseFloat(geo.longitude) : null}
+            onChange={(lat, lng) => {
+              setGeo((prev) => ({ ...prev, latitude: lat.toFixed(6), longitude: lng.toFixed(6) }))
+              setGeoStatus({ kind: 'idle' })
+            }}
+          />
+
+          {geoStatus.kind === 'error' && (
+            <p className="text-[0.8rem] text-destructive">{geoStatus.message}</p>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="geo-mode">Open in</Label>
@@ -704,7 +725,7 @@ END:VCARD`
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="maps">Google Maps (recommended — works on iOS & Android)</SelectItem>
+                <SelectItem value="maps">Google Maps (recommended — works on iOS &amp; Android)</SelectItem>
                 <SelectItem value="geo">Native maps app (geo: URI — Android-first)</SelectItem>
               </SelectContent>
             </Select>
@@ -712,14 +733,14 @@ END:VCARD`
 
           <Accordion type="single" collapsible>
             <AccordionItem value="advanced-coords" className="border-b-0">
-              <AccordionTrigger className="text-sm py-2">Advanced: precise coordinates</AccordionTrigger>
+              <AccordionTrigger className="text-sm py-2">Coordinates {geo.latitude && geo.longitude ? `(${geo.latitude}, ${geo.longitude})` : ''}</AccordionTrigger>
               <AccordionContent>
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <InputField id="geo-lat" label="Latitude" placeholder="40.748817" value={geo.latitude} onChange={handleGeoChange('latitude')} />
                   <InputField id="geo-lng" label="Longitude" placeholder="-73.985428" value={geo.longitude} onChange={handleGeoChange('longitude')} />
                 </div>
                 <p className="text-[0.8rem] text-muted-foreground mt-2">
-                  When set, the QR drops a pin at exact coordinates and uses the address above as a label.
+                  These update automatically when you click on the map or use the location button.
                 </p>
               </AccordionContent>
             </AccordionItem>
