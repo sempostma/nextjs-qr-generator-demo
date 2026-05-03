@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Mail, MessageSquare, Phone, User, Globe, Wifi, Type, Calendar, MapPin, Bitcoin } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Mail, MessageSquare, Phone, User, Globe, Wifi, Type, Calendar, MapPin, Bitcoin, LocateFixed, Loader2 } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
 const InputField = ({
@@ -112,8 +113,38 @@ export default function QRInputs({ name, onChange, defaultOption = 'url', lockOp
     latitude: "",
     longitude: "",
     query: "",
-    mode: "geo" as "geo" | "maps",
+    mode: "maps" as "geo" | "maps",
   })
+
+  const [geoStatus, setGeoStatus] = useState<{ kind: 'idle' | 'loading' | 'error' | 'success'; message?: string }>({ kind: 'idle' })
+
+  const useMyLocation = () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGeoStatus({ kind: 'error', message: 'Geolocation is not available in this browser.' })
+      return
+    }
+    setGeoStatus({ kind: 'loading' })
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(6)
+        const lng = pos.coords.longitude.toFixed(6)
+        setGeo((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+        setGeoStatus({ kind: 'success', message: `Pinned to ${lat}, ${lng}` })
+      },
+      (err) => {
+        const message =
+          err.code === err.PERMISSION_DENIED
+            ? 'Permission denied — allow location access in your browser to use this.'
+            : err.code === err.POSITION_UNAVAILABLE
+            ? 'Position unavailable. Try entering an address instead.'
+            : err.code === err.TIMEOUT
+            ? 'Timed out. Try again.'
+            : 'Could not get your location.'
+        setGeoStatus({ kind: 'error', message })
+      },
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+    )
+  }
 
   const [bitcoin, setBitcoin] = useState({
     address: "",
@@ -211,16 +242,28 @@ END:VCARD`
   }
 
   const generateGeo = () => {
+    const hasCoords = !!geo.latitude && !!geo.longitude
+    const hasQuery = !!geo.query.trim()
+    if (!hasCoords && !hasQuery) return ''
+
     if (geo.mode === 'maps') {
-      if (!geo.query && !(geo.latitude && geo.longitude)) return ''
-      if (geo.query) {
-        return `https://maps.google.com/?q=${encodeURIComponent(geo.query)}`
-      }
-      return `https://maps.google.com/?q=${encodeURIComponent(`${geo.latitude},${geo.longitude}`)}`
+      // Coordinates with optional place name win for accuracy; otherwise free-text query.
+      const target = hasCoords
+        ? hasQuery
+          ? `${geo.latitude},${geo.longitude} (${geo.query})`
+          : `${geo.latitude},${geo.longitude}`
+        : geo.query
+      return `https://maps.google.com/?q=${encodeURIComponent(target)}`
     }
-    if (!geo.latitude || !geo.longitude) return ''
-    const q = geo.query ? `?q=${encodeURIComponent(geo.query)}` : ''
-    return `geo:${geo.latitude},${geo.longitude}${q}`
+
+    // geo: URI — RFC 5870. With coordinates, optionally tag with ?q=name.
+    if (hasCoords) {
+      const q = hasQuery ? `?q=${encodeURIComponent(geo.query)}` : ''
+      return `geo:${geo.latitude},${geo.longitude}${q}`
+    }
+    // Address-only fallback. Android maps app resolves geo:0,0?q=ADDRESS;
+    // not all iOS clients do, so we encode for best-effort compatibility.
+    return `geo:0,0?q=${encodeURIComponent(geo.query)}`
   }
 
   const generateBitcoin = () => {
@@ -619,25 +662,68 @@ END:VCARD`
         {/* Geo / Location Section */}
         <div className="space-y-4" style={{ display: selectedOption === 'geo' ? 'block' : 'none' }}>
           <div className="space-y-2">
-            <Label htmlFor="geo-mode">QR target</Label>
+            <Label htmlFor="geo-query">Address or place name</Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                id="geo-query"
+                placeholder="350 5th Ave, New York, NY"
+                value={geo.query}
+                onChange={(e) => handleGeoChange('query')(e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={useMyLocation}
+                disabled={geoStatus.kind === 'loading'}
+                className="sm:w-auto"
+              >
+                {geoStatus.kind === 'loading' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <LocateFixed className="h-4 w-4" />
+                )}
+                <span className="ml-2">Use my location</span>
+              </Button>
+            </div>
+            {geoStatus.kind === 'error' && (
+              <p className="text-[0.8rem] text-destructive">{geoStatus.message}</p>
+            )}
+            {geoStatus.kind === 'success' && (
+              <p className="text-[0.8rem] text-muted-foreground">{geoStatus.message}</p>
+            )}
+            <p className="text-[0.8rem] text-muted-foreground">
+              Type any address, landmark or business name. The maps app on the scanner&rsquo;s phone will resolve it. For pin-perfect accuracy, use the location button or open Advanced and paste coordinates.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="geo-mode">Open in</Label>
             <Select value={geo.mode} onValueChange={(v) => handleGeoChange('mode')(v as 'geo' | 'maps')}>
               <SelectTrigger id="geo-mode">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="geo">Native maps (geo: URI)</SelectItem>
-                <SelectItem value="maps">Google Maps URL</SelectItem>
+                <SelectItem value="maps">Google Maps (recommended — works on iOS & Android)</SelectItem>
+                <SelectItem value="geo">Native maps app (geo: URI — Android-first)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-[0.8rem] text-muted-foreground">
-              Native opens the user&rsquo;s default maps app. Google Maps always opens Google Maps in the browser or the app.
-            </p>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <InputField id="geo-lat" label="Latitude" placeholder="52.3676" value={geo.latitude} onChange={handleGeoChange('latitude')} />
-            <InputField id="geo-lng" label="Longitude" placeholder="4.9041" value={geo.longitude} onChange={handleGeoChange('longitude')} />
-          </div>
-          <InputField id="geo-query" label="Place name (optional)" placeholder="Anne Frank House" value={geo.query} onChange={handleGeoChange('query')} />
+
+          <Accordion type="single" collapsible>
+            <AccordionItem value="advanced-coords" className="border-b-0">
+              <AccordionTrigger className="text-sm py-2">Advanced: precise coordinates</AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <InputField id="geo-lat" label="Latitude" placeholder="40.748817" value={geo.latitude} onChange={handleGeoChange('latitude')} />
+                  <InputField id="geo-lng" label="Longitude" placeholder="-73.985428" value={geo.longitude} onChange={handleGeoChange('longitude')} />
+                </div>
+                <p className="text-[0.8rem] text-muted-foreground mt-2">
+                  When set, the QR drops a pin at exact coordinates and uses the address above as a label.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
 
         {/* Bitcoin Section */}
