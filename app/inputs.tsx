@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Mail, MessageSquare, Phone, User, Globe } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Mail, MessageSquare, Phone, User, Globe, Wifi, Type, Calendar, MapPin, Bitcoin } from "lucide-react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
-// ... InputField component remains the same ...
 const InputField = ({
   id,
   label,
@@ -36,16 +37,22 @@ const InputField = ({
   </div>
 )
 
+export type QRType = 'url' | 'wifi' | 'contact' | 'event' | 'geo' | 'bitcoin' | 'plaintext' | 'sms' | 'email' | 'phone'
+
 interface QRInputsProps {
   onChange: (encodedResult: string) => void
   name: string
+  defaultOption?: QRType
+  lockOption?: boolean
 }
 
-export default function QRInputs({ name, onChange }: QRInputsProps) {
-  const [selectedOption, setSelectedOption] = useState("url")
+// Escape characters per WiFi QR spec: \, ;, ,, ", :
+const escapeWifi = (s: string) => s.replace(/([\\;,":])/g, '\\$1')
+
+export default function QRInputs({ name, onChange, defaultOption = 'url', lockOption = false }: QRInputsProps) {
+  const [selectedOption, setSelectedOption] = useState<QRType>(defaultOption)
   const [encodedResult, setEncodedResult] = useState("")
 
-  // ... existing state definitions remain the same ...
   const [url, setUrl] = useState("")
   const [utmParams, setUtmParams] = useState({
     source: "",
@@ -53,6 +60,13 @@ export default function QRInputs({ name, onChange }: QRInputsProps) {
     campaign: "",
     term: "",
     content: ""
+  })
+
+  const [wifi, setWifi] = useState({
+    ssid: "",
+    password: "",
+    encryption: "WPA",
+    hidden: false,
   })
 
   const [contact, setContact] = useState({
@@ -85,16 +99,41 @@ export default function QRInputs({ name, onChange }: QRInputsProps) {
 
   const [phoneNumber, setPhoneNumber] = useState("")
 
+  const [event, setEvent] = useState({
+    title: "",
+    location: "",
+    description: "",
+    start: "",
+    end: "",
+    allDay: false,
+  })
+
+  const [geo, setGeo] = useState({
+    latitude: "",
+    longitude: "",
+    query: "",
+    mode: "geo" as "geo" | "maps",
+  })
+
+  const [bitcoin, setBitcoin] = useState({
+    address: "",
+    amount: "",
+    label: "",
+    message: "",
+  })
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
 
   const tabValue = useMemo(() => isOpen ? 'utm' : undefined, [isOpen])
 
-  // Function to generate vCard format
   const generateVCard = () => {
+    if (!contact.firstName && !contact.lastName && !contact.fullName && !contact.email && !contact.telMobile && !contact.telOther && !contact.organization) {
+      return ''
+    }
     return `BEGIN:VCARD
 VERSION:3.0
 N:${contact.lastName};${contact.firstName};;${contact.prefix}
-FN:${contact.fullName}
+FN:${contact.fullName || `${contact.firstName} ${contact.lastName}`.trim()}
 PREFIX:${contact.prefix}
 TITLE:${contact.title}
 ORG:${contact.organization}
@@ -106,8 +145,17 @@ ADR:;;${contact.address}
 END:VCARD`
   }
 
-  // Function to add UTM parameters to URL
+  const generateWifi = () => {
+    if (!wifi.ssid) return ''
+    const T = wifi.encryption === 'nopass' ? 'nopass' : wifi.encryption
+    const S = escapeWifi(wifi.ssid)
+    const P = wifi.encryption === 'nopass' ? '' : escapeWifi(wifi.password)
+    const H = wifi.hidden ? 'true' : 'false'
+    return `WIFI:T:${T};S:${S};${P ? `P:${P};` : ''}H:${H};;`
+  }
+
   const addUtmParams = (baseUrl: string) => {
+    if (!baseUrl) return ''
     const params = new URLSearchParams()
 
     if (utmParams.source) params.append('utm_source', utmParams.source)
@@ -124,18 +172,74 @@ END:VCARD`
       : `${baseUrl}?${paramsString}`
   }
 
-  // Function to generate email format
   const generateEmailFormat = () => {
+    if (!email.address) return ''
     const subject = encodeURIComponent(email.subject)
     const body = encodeURIComponent(email.body)
     return `mailto:${email.address}?subject=${subject}&body=${body}`
   }
 
-  // Function to update encoded result based on selected option
+  // vEvent escape: \ , ; and newlines
+  const escapeIcal = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n')
+
+  const formatIcalDate = (input: string, allDay: boolean) => {
+    if (!input) return ''
+    if (allDay) {
+      // input is yyyy-mm-dd
+      return input.replace(/-/g, '')
+    }
+    // input is yyyy-mm-ddThh:mm
+    const d = new Date(input)
+    if (isNaN(d.getTime())) return ''
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
+  }
+
+  const generateEvent = () => {
+    if (!event.title || !event.start) return ''
+    const dtStart = formatIcalDate(event.start, event.allDay)
+    const dtEnd = event.end ? formatIcalDate(event.end, event.allDay) : dtStart
+    if (!dtStart) return ''
+    const dateParam = event.allDay ? ';VALUE=DATE' : ''
+    const lines = ['BEGIN:VEVENT', `SUMMARY:${escapeIcal(event.title)}`]
+    if (event.location) lines.push(`LOCATION:${escapeIcal(event.location)}`)
+    if (event.description) lines.push(`DESCRIPTION:${escapeIcal(event.description)}`)
+    lines.push(`DTSTART${dateParam}:${dtStart}`)
+    lines.push(`DTEND${dateParam}:${dtEnd}`)
+    lines.push('END:VEVENT')
+    return lines.join('\n')
+  }
+
+  const generateGeo = () => {
+    if (geo.mode === 'maps') {
+      if (!geo.query && !(geo.latitude && geo.longitude)) return ''
+      if (geo.query) {
+        return `https://maps.google.com/?q=${encodeURIComponent(geo.query)}`
+      }
+      return `https://maps.google.com/?q=${encodeURIComponent(`${geo.latitude},${geo.longitude}`)}`
+    }
+    if (!geo.latitude || !geo.longitude) return ''
+    const q = geo.query ? `?q=${encodeURIComponent(geo.query)}` : ''
+    return `geo:${geo.latitude},${geo.longitude}${q}`
+  }
+
+  const generateBitcoin = () => {
+    if (!bitcoin.address) return ''
+    const params = new URLSearchParams()
+    if (bitcoin.amount) params.append('amount', bitcoin.amount)
+    if (bitcoin.label) params.append('label', bitcoin.label)
+    if (bitcoin.message) params.append('message', bitcoin.message)
+    const qs = params.toString()
+    return `bitcoin:${bitcoin.address}${qs ? `?${qs}` : ''}`
+  }
+
   const updateEncodedResult = () => {
     switch (selectedOption) {
       case 'url':
         setEncodedResult(addUtmParams(url))
+        break
+      case 'wifi':
+        setEncodedResult(generateWifi())
         break
       case 'contact':
         setEncodedResult(generateVCard())
@@ -144,13 +248,22 @@ END:VCARD`
         setEncodedResult(plainText)
         break
       case 'sms':
-        setEncodedResult(`smsto:${sms.number}:${sms.message}`)
+        setEncodedResult(sms.number ? `smsto:${sms.number}:${sms.message}` : '')
         break
       case 'email':
         setEncodedResult(generateEmailFormat())
         break
       case 'phone':
-        setEncodedResult(`tel:${phoneNumber}`)
+        setEncodedResult(phoneNumber ? `tel:${phoneNumber}` : '')
+        break
+      case 'event':
+        setEncodedResult(generateEvent())
+        break
+      case 'geo':
+        setEncodedResult(generateGeo())
+        break
+      case 'bitcoin':
+        setEncodedResult(generateBitcoin())
         break
       default:
         setEncodedResult('')
@@ -162,23 +275,21 @@ END:VCARD`
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [encodedResult])
 
-  // Update encoded result whenever form values change
   useEffect(() => {
     updateEncodedResult()
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOption, url, contact, plainText, sms, email, phoneNumber])
+  }, [selectedOption, url, utmParams, wifi, contact, plainText, sms, email, phoneNumber, event, geo, bitcoin])
 
-  // ... existing handler functions remain the same ...
   const handleContactChange = (field: keyof typeof contact) => (value: string) => {
     setContact(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSmsChange = (field: keyof typeof sms) => (value: string) => {
+  const handleSmsChange = (field: keyof Omit<typeof sms, 'format'>) => (value: string) => {
     setSms(prev => {
       const newState = { ...prev, [field]: value }
       return {
         ...newState,
-        format: `smsto:${newState.number}:${newState.message}`
+        format: newState.number ? `smsto:${newState.number}:${newState.message}` : ''
       }
     })
   }
@@ -191,10 +302,30 @@ END:VCARD`
     setEmail(prev => ({ ...prev, [field]: value }))
   }
 
-  const options = [
+  const handleWifiChange = <K extends keyof typeof wifi>(field: K) => (value: typeof wifi[K]) => {
+    setWifi(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleEventChange = <K extends keyof typeof event>(field: K) => (value: typeof event[K]) => {
+    setEvent(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleGeoChange = <K extends keyof typeof geo>(field: K) => (value: typeof geo[K]) => {
+    setGeo(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleBitcoinChange = (field: keyof typeof bitcoin) => (value: string) => {
+    setBitcoin(prev => ({ ...prev, [field]: value }))
+  }
+
+  const options: { value: QRType; label: string; icon: typeof Globe }[] = [
     { value: "url", label: "URL", icon: Globe },
+    { value: "wifi", label: "WiFi", icon: Wifi },
     { value: "contact", label: "Contact", icon: User },
-    { value: "plaintext", label: "Plain Text", icon: MessageSquare },
+    { value: "event", label: "Event", icon: Calendar },
+    { value: "geo", label: "Location", icon: MapPin },
+    { value: "bitcoin", label: "Bitcoin", icon: Bitcoin },
+    { value: "plaintext", label: "Plain Text", icon: Type },
     { value: "sms", label: "SMS", icon: MessageSquare },
     { value: "email", label: "Email", icon: Mail },
     { value: "phone", label: "Phone", icon: Phone },
@@ -205,294 +336,322 @@ END:VCARD`
       {/* Hidden input for encoded result */}
       <input type="hidden" name={name} value={encodedResult} />
 
-      <RadioGroup
-        value={selectedOption}
-        onValueChange={setSelectedOption}
-        className="grid grid-cols-3 gap-4"
-      >
-        {/* ... RadioGroup content remains the same ... */}
-        {options.map((option) => {
-          const Icon = option.icon
-          return (
-            <div key={option.value}>
-              <RadioGroupItem
-                value={option.value}
-                id={option.value}
-                className="peer sr-only"
-              />
-              <Label
-                htmlFor={option.value}
-                className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
-              >
-                <Icon className="mb-3 h-6 w-6" />
-                <span className="text-sm font-medium">{option.label}</span>
-              </Label>
-            </div>
-          )
-        })}
-      </RadioGroup>
+      {!lockOption && (
+        <RadioGroup
+          value={selectedOption}
+          onValueChange={(v) => setSelectedOption(v as QRType)}
+          className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-4"
+        >
+          {options.map((option) => {
+            const Icon = option.icon
+            return (
+              <div key={option.value}>
+                <RadioGroupItem
+                  value={option.value}
+                  id={option.value}
+                  className="peer sr-only"
+                />
+                <Label
+                  htmlFor={option.value}
+                  className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                >
+                  <Icon className="mb-3 h-6 w-6" />
+                  <span className="text-sm font-medium">{option.label}</span>
+                </Label>
+              </div>
+            )
+          })}
+        </RadioGroup>
+      )}
 
-      {/* ... Rest of the form content remains the same ... */}
-      {/* URL Section */}
-      <div style={{ display: selectedOption === 'url' ? 'block' : 'none' }}>
-        <InputField
-          id="url"
-          label="Enter URL"
-          placeholder="https://example.com"
-          value={url}
-          onChange={setUrl}
-        />
-        <div className="mt-4">
-          <Accordion value={tabValue} type="single">
-            <AccordionItem value='utm'>
-              <AccordionTrigger onClick={() => setIsOpen(!isOpen)}>Tracking (UTM)</AccordionTrigger>
-              <AccordionContent forceMount={true} hidden={!isOpen}>
+      <div className="mt-4">
+        {/* URL Section */}
+        <div style={{ display: selectedOption === 'url' ? 'block' : 'none' }}>
+          <InputField
+            id="url"
+            label="Enter URL"
+            placeholder="https://example.com"
+            value={url}
+            onChange={setUrl}
+          />
+          <div className="mt-4">
+            <Accordion value={tabValue} type="single">
+              <AccordionItem value='utm'>
+                <AccordionTrigger onClick={() => setIsOpen(!isOpen)}>Tracking (UTM)</AccordionTrigger>
+                <AccordionContent forceMount={true} hidden={!isOpen}>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className='space-y-2'>
-                    <InputField
-                      id="utm-source"
-                      label="Source*"
-                      placeholder="For example: facebook"
-                      value={utmParams.source}
-                      onChange={handleUtmChange('source')}
-                      aria-describedby="utm_source_explain"
-                    />
-                    <p id="utm_source_explain" className='text-[0.8rem] text-muted-foreground'>Identifies which site sent the traffic, and is a required parameter.	</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className='space-y-2'>
+                      <InputField
+                        id="utm-source"
+                        label="Source"
+                        placeholder="For example: facebook"
+                        value={utmParams.source}
+                        onChange={handleUtmChange('source')}
+                      />
+                      <p id="utm_source_explain" className='text-[0.8rem] text-muted-foreground'>Identifies which site sent the traffic.</p>
+                    </div>
+                    <div className='space-y-2'>
+                      <InputField
+                        id="utm-medium"
+                        label="Medium"
+                        placeholder="For example: cpc"
+                        value={utmParams.medium}
+                        onChange={handleUtmChange('medium')}
+                      />
+                      <p id="utm_medium_explain" className='text-[0.8rem] text-muted-foreground'>Identifies what type of link was used, such as email or pay-per-click advertising.</p>
+                    </div>
+                    <div className='space-y-2'>
+                      <InputField
+                        id="utm-campaign"
+                        label="Campaign"
+                        placeholder="For example: spring_sale"
+                        value={utmParams.campaign}
+                        onChange={handleUtmChange('campaign')}
+                      />
+                      <p id="utm_campaign_explain" className='text-[0.8rem] text-muted-foreground'>Identifies a specific product promotion or strategic campaign.</p>
+                    </div>
+                    <div className='space-y-2'>
+                      <InputField
+                        id="utm-term"
+                        label="Term"
+                        placeholder="For example: running+shoes"
+                        value={utmParams.term}
+                        onChange={handleUtmChange('term')}
+                      />
+                      <p id="utm_term_explain" className='text-[0.8rem] text-muted-foreground'>Identifies search terms.</p>
+                    </div>
                   </div>
-                  <div className='space-y-2'>
-
-                  <InputField
-                    id="utm-medium"
-                    label="Medium"
-                    placeholder="For example: cpc"
-                    value={utmParams.medium}
-                    onChange={handleUtmChange('medium')}
-                    aria-describedby="utm_medium_explain"
+                  <div className="mt-4 space-y-2">
+                    <InputField
+                      id="utm-content"
+                      label="Content"
+                      placeholder="For example: logolink"
+                      value={utmParams.content}
+                      onChange={handleUtmChange('content')}
                     />
-                    <p id="utm_medium_explain" className='text-[0.8rem] text-muted-foreground'>Identifies what type of link was used, such as email or pay-per-click advertising.	</p>
-                    </div>
-                  <div className='space-y-2'>
-
-                  <InputField
-                    id="utm-campaign"
-                    label="Campaign"
-                    placeholder="For example: spring_sale"
-                    value={utmParams.campaign}
-                    onChange={handleUtmChange('campaign')}
-                    aria-describedby="utm_campaign_explain"
-                  />
-                    <p id="utm_campaign_explain" className='text-[0.8rem] text-muted-foreground'>Identifies a specific product promotion or strategic campaign.</p>
-                    </div>
-                  <div className='space-y-2'>
-
-                  <InputField
-                    id="utm-term"
-                    label="Term"
-                    placeholder="For example: running+shoes"
-                    value={utmParams.term}
-                    onChange={handleUtmChange('term')}
-                    aria-describedby="utm_term_explain"
-                  />
-                    <p id="utm_term_explain" className='text-[0.8rem] text-muted-foreground'>Identifies search terms.	</p>
-                    </div>
-                </div>
-                <div className="mt-4 space-y-2">
-                  
-                  <InputField
-                    id="utm-content"
-                    label="Content"
-                    placeholder="For example: logolink"
-                    value={utmParams.content}
-                    onChange={handleUtmChange('content')}
-                    aria-describedby="utm_content_explain"
-                  />
-                    <p id="utm_content_explain" className='text-[0.8rem] text-muted-foreground'>	Identifies what specifically was clicked to bring the user to the site, such as a banner ad or a text link. It is often used for A/B testing and content-targeted ads.</p>
-
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+                    <p id="utm_content_explain" className='text-[0.8rem] text-muted-foreground'>Identifies what specifically was clicked, such as a banner ad or text link. Often used for A/B testing and content-targeted ads.</p>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
         </div>
-      </div>
 
-      {/* Contact Section */}
-      <div className="space-y-4" style={{ display: selectedOption === 'contact' ? 'block' : 'none' }}>
-        <div className="grid grid-cols-2 gap-4">
+        {/* WiFi Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'wifi' ? 'block' : 'none' }}>
           <InputField
-            id="prefix"
-            label="Prefix"
-            placeholder="Mr."
-            value={contact.prefix}
-            onChange={handleContactChange('prefix')}
+            id="wifi-ssid"
+            label="Network name (SSID)"
+            placeholder="MyHomeWiFi"
+            value={wifi.ssid}
+            onChange={handleWifiChange('ssid')}
           />
-          <InputField
-            id="first-name"
-            label="First Name"
-            placeholder=""
-            value={contact.firstName}
-            onChange={handleContactChange('firstName')}
-          />
-          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="wifi-encryption">Encryption</Label>
+              <Select value={wifi.encryption} onValueChange={handleWifiChange('encryption')}>
+                <SelectTrigger id="wifi-encryption">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WPA">WPA / WPA2 / WPA3</SelectItem>
+                  <SelectItem value="WEP">WEP</SelectItem>
+                  <SelectItem value="nopass">No password</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {wifi.encryption !== 'nopass' && (
+              <InputField
+                id="wifi-password"
+                label="Password"
+                placeholder="Network password"
+                type="text"
+                value={wifi.password}
+                onChange={handleWifiChange('password')}
+              />
+            )}
+          </div>
+          <div className="flex gap-2 items-center">
+            <Switch
+              id="wifi-hidden"
+              checked={wifi.hidden}
+              onCheckedChange={handleWifiChange('hidden')}
+            />
+            <Label htmlFor="wifi-hidden">Hidden network</Label>
+          </div>
+          <p className="text-[0.8rem] text-muted-foreground">
+            Compatible with iOS, Android and most modern phones. Scan to join the WiFi network instantly without typing the password.
+          </p>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <InputField
-            id="last-name"
-            label="Last Name"
-            placeholder=""
-            value={contact.lastName}
-            onChange={handleContactChange('lastName')}
-          />
-          <InputField
-            id="full-name"
-            label="Full Name"
-            placeholder=""
-            value={contact.fullName}
-            onChange={handleContactChange('fullName')}
-          />
+
+        {/* Contact Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'contact' ? 'block' : 'none' }}>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField id="prefix" label="Prefix" placeholder="Mr." value={contact.prefix} onChange={handleContactChange('prefix')} />
+            <InputField id="first-name" label="First Name" placeholder="" value={contact.firstName} onChange={handleContactChange('firstName')} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField id="last-name" label="Last Name" placeholder="" value={contact.lastName} onChange={handleContactChange('lastName')} />
+            <InputField id="full-name" label="Full Name" placeholder="" value={contact.fullName} onChange={handleContactChange('fullName')} />
+          </div>
+          <InputField id="title" label="Title" placeholder="" value={contact.title} onChange={handleContactChange('title')} />
+          <InputField id="organization" label="Organization" placeholder="" value={contact.organization} onChange={handleContactChange('organization')} />
+          <div className="grid grid-cols-2 gap-4">
+            <InputField id="tel-other" label="Telephone (Other)" placeholder="" type="tel" value={contact.telOther} onChange={handleContactChange('telOther')} />
+            <InputField id="tel-mobile" label="Telephone (Mobile)" placeholder="" type="tel" value={contact.telMobile} onChange={handleContactChange('telMobile')} />
+          </div>
+          <InputField id="fax" label="Fax" placeholder="" type="tel" value={contact.fax} onChange={handleContactChange('fax')} />
+          <InputField id="email" label="Email" placeholder="johndoe@example.com" type="email" value={contact.email} onChange={handleContactChange('email')} />
+          <div className="space-y-2">
+            <Label htmlFor="address">Address</Label>
+            <Textarea
+              id="address"
+              placeholder=""
+              className="min-h-[100px]"
+              value={contact.address}
+              onChange={(e) => handleContactChange('address')(e.target.value)}
+            />
+          </div>
         </div>
-        <InputField
-          id="title"
-          label="Title"
-          placeholder=""
-          value={contact.title}
-          onChange={handleContactChange('title')}
-        />
-        <InputField
-          id="organization"
-          label="Organization"
-          placeholder=""
-          value={contact.organization}
-          onChange={handleContactChange('organization')}
-        />
-        <div className="grid grid-cols-2 gap-4">
-          <InputField
-            id="tel-other"
-            label="Telephone (Other)"
-            placeholder=""
-            type="tel"
-            value={contact.telOther}
-            onChange={handleContactChange('telOther')}
-          />
-          <InputField
-            id="tel-mobile"
-            label="Telephone (Mobile)"
-            placeholder=""
-            type="tel"
-            value={contact.telMobile}
-            onChange={handleContactChange('telMobile')}
-          />
-        </div>
-        <InputField
-          id="fax"
-          label="Fax"
-          placeholder=""
-          type="tel"
-          value={contact.fax}
-          onChange={handleContactChange('fax')}
-        />
-        <InputField
-          id="email"
-          label="Email"
-          placeholder="johndoe@example.com"
-          type="email"
-          value={contact.email}
-          onChange={handleContactChange('email')}
-        />
-        <div className="space-y-2">
-          <Label htmlFor="address" className="">Address</Label>
+
+        {/* Plain Text Section */}
+        <div className="space-y-2" style={{ display: selectedOption === 'plaintext' ? 'block' : 'none' }}>
+          <Label htmlFor="plaintext">Enter your text</Label>
           <Textarea
-            id="address"
-            placeholder=""
-            className="min-h-[100px]"
-            value={contact.address}
-            onChange={(e) => handleContactChange('address')(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {/* Plain Text Section */}
-      <div className="space-y-2" style={{ display: selectedOption === 'plaintext' ? 'block' : 'none' }}>
-        <Label htmlFor="plaintext" className="">Enter your text</Label>
-        <Textarea
-          id="plaintext"
-          placeholder="Type your message here..."
-          className="min-h-[150px]"
-          value={plainText}
-          onChange={(e) => setPlainText(e.target.value)}
-        />
-      </div>
-
-      {/* SMS Section */}
-      <div className="space-y-4" style={{ display: selectedOption === 'sms' ? 'block' : 'none' }}>
-        <InputField
-          id="sms-number"
-          label="Recipient's Phone Number"
-          placeholder=""
-          type="tel"
-          value={sms.number}
-          onChange={handleSmsChange('number')}
-        />
-        <div className="space-y-2">
-          <Label htmlFor="sms-message" className="">Message Content</Label>
-          <Textarea
-            id="sms-message"
-            placeholder="Hello"
-            className="min-h-[100px]"
-            value={sms.message}
-            onChange={(e) => handleSmsChange('message')(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="sms-format" className="">SMS Format</Label>
-          <Input
-            id="sms-format"
-            value={sms.format}
-            readOnly
-            className="bg-muted"
-          />
-        </div>
-      </div>
-
-      {/* Email Section */}
-      <div className="space-y-4" style={{ display: selectedOption === 'email' ? 'block' : 'none' }}>
-        <InputField
-          id="email-address"
-          label="Recipient's Email Address"
-          placeholder="john@example.com"
-          type="email"
-          value={email.address}
-          onChange={handleEmailChange('address')}
-        />
-        <InputField
-          id="email-subject"
-          label="Email Subject"
-          placeholder="Enter the subject of your email"
-          value={email.subject}
-          onChange={handleEmailChange('subject')}
-        />
-        <div className="space-y-2">
-          <Label htmlFor="email-body">Email Body</Label>
-          <Textarea
-            id="email-body"
-            placeholder="Compose your email message here..."
+            id="plaintext"
+            placeholder="Type your message here..."
             className="min-h-[150px]"
-            value={email.body}
-            onChange={(e) => handleEmailChange('body')(e.target.value)}
+            value={plainText}
+            onChange={(e) => setPlainText(e.target.value)}
           />
         </div>
-      </div>
 
-      {/* Phone Section */}
-      <div style={{ display: selectedOption === 'phone' ? 'block' : 'none' }}>
-        <InputField
-          id="phone-number"
-          label="Enter Phone Number"
-          placeholder="+1 (555) 123-4567"
-          type="tel"
-          value={phoneNumber}
-          onChange={setPhoneNumber}
-        />
+        {/* SMS Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'sms' ? 'block' : 'none' }}>
+          <InputField id="sms-number" label="Recipient's Phone Number" placeholder="+1 555 123 4567" type="tel" value={sms.number} onChange={handleSmsChange('number')} />
+          <div className="space-y-2">
+            <Label htmlFor="sms-message">Message Content</Label>
+            <Textarea
+              id="sms-message"
+              placeholder="Hello"
+              className="min-h-[100px]"
+              value={sms.message}
+              onChange={(e) => handleSmsChange('message')(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sms-format">SMS Format</Label>
+            <Input id="sms-format" value={sms.format} readOnly className="bg-muted" />
+          </div>
+        </div>
+
+        {/* Email Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'email' ? 'block' : 'none' }}>
+          <InputField id="email-address" label="Recipient's Email Address" placeholder="john@example.com" type="email" value={email.address} onChange={handleEmailChange('address')} />
+          <InputField id="email-subject" label="Email Subject" placeholder="Enter the subject of your email" value={email.subject} onChange={handleEmailChange('subject')} />
+          <div className="space-y-2">
+            <Label htmlFor="email-body">Email Body</Label>
+            <Textarea
+              id="email-body"
+              placeholder="Compose your email message here..."
+              className="min-h-[150px]"
+              value={email.body}
+              onChange={(e) => handleEmailChange('body')(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* Phone Section */}
+        <div style={{ display: selectedOption === 'phone' ? 'block' : 'none' }}>
+          <InputField id="phone-number" label="Enter Phone Number" placeholder="+1 (555) 123-4567" type="tel" value={phoneNumber} onChange={setPhoneNumber} />
+        </div>
+
+        {/* Event Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'event' ? 'block' : 'none' }}>
+          <InputField id="event-title" label="Event title" placeholder="Birthday party" value={event.title} onChange={handleEventChange('title')} />
+          <InputField id="event-location" label="Location" placeholder="123 Main St, Springfield" value={event.location} onChange={handleEventChange('location')} />
+          <div className="space-y-2">
+            <Label htmlFor="event-description">Description</Label>
+            <Textarea
+              id="event-description"
+              placeholder="Bring snacks!"
+              className="min-h-[80px]"
+              value={event.description}
+              onChange={(e) => handleEventChange('description')(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 items-center">
+            <Switch
+              id="event-allday"
+              checked={event.allDay}
+              onCheckedChange={(v) => {
+                handleEventChange('allDay')(v)
+                handleEventChange('start')('')
+                handleEventChange('end')('')
+              }}
+            />
+            <Label htmlFor="event-allday">All-day event</Label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField
+              id="event-start"
+              label="Start"
+              placeholder=""
+              type={event.allDay ? 'date' : 'datetime-local'}
+              value={event.start}
+              onChange={handleEventChange('start')}
+            />
+            <InputField
+              id="event-end"
+              label="End"
+              placeholder=""
+              type={event.allDay ? 'date' : 'datetime-local'}
+              value={event.end}
+              onChange={handleEventChange('end')}
+            />
+          </div>
+          <p className="text-[0.8rem] text-muted-foreground">
+            Generates a vEvent QR code. Scanning prompts the user to add the event to their calendar (iOS, Android and most calendar apps).
+          </p>
+        </div>
+
+        {/* Geo / Location Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'geo' ? 'block' : 'none' }}>
+          <div className="space-y-2">
+            <Label htmlFor="geo-mode">QR target</Label>
+            <Select value={geo.mode} onValueChange={(v) => handleGeoChange('mode')(v as 'geo' | 'maps')}>
+              <SelectTrigger id="geo-mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="geo">Native maps (geo: URI)</SelectItem>
+                <SelectItem value="maps">Google Maps URL</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-[0.8rem] text-muted-foreground">
+              Native opens the user&rsquo;s default maps app. Google Maps always opens Google Maps in the browser or the app.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField id="geo-lat" label="Latitude" placeholder="52.3676" value={geo.latitude} onChange={handleGeoChange('latitude')} />
+            <InputField id="geo-lng" label="Longitude" placeholder="4.9041" value={geo.longitude} onChange={handleGeoChange('longitude')} />
+          </div>
+          <InputField id="geo-query" label="Place name (optional)" placeholder="Anne Frank House" value={geo.query} onChange={handleGeoChange('query')} />
+        </div>
+
+        {/* Bitcoin Section */}
+        <div className="space-y-4" style={{ display: selectedOption === 'bitcoin' ? 'block' : 'none' }}>
+          <InputField id="btc-address" label="Bitcoin address" placeholder="bc1q…" value={bitcoin.address} onChange={handleBitcoinChange('address')} />
+          <div className="grid grid-cols-2 gap-4">
+            <InputField id="btc-amount" label="Amount (BTC, optional)" placeholder="0.001" value={bitcoin.amount} onChange={handleBitcoinChange('amount')} />
+            <InputField id="btc-label" label="Label (optional)" placeholder="Coffee shop" value={bitcoin.label} onChange={handleBitcoinChange('label')} />
+          </div>
+          <InputField id="btc-message" label="Message (optional)" placeholder="Order #1234" value={bitcoin.message} onChange={handleBitcoinChange('message')} />
+          <p className="text-[0.8rem] text-muted-foreground">
+            BIP-21 compatible. Most Bitcoin wallets recognize the format and pre-fill amount and recipient.
+          </p>
+        </div>
       </div>
     </div>
   )

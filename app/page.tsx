@@ -1,110 +1,122 @@
-import { Metadata } from 'next'
+import Link from 'next/link'
 import QRCodeGenerator from './qr-code-generator'
+import AdSlot from '@/components/ad-slot'
+import { Wifi, User, Globe, Utensils, Mail, MessageSquare, Phone, Calendar, MapPin, Bitcoin, FileText, DollarSign, Music, Smartphone } from 'lucide-react'
 
-export const metadata: Metadata = {
-  title: 'QR Code Generator | Create Custom QR Codes Instantly',
-  description: 'Generate custom QR codes quickly and easily with our free online QR code generator. Perfect for websites, business cards, and more. Customize colors, embed logos, and add UTM parameters for tracking.',
-  openGraph: {
-    title: 'QR Code Generator | Create Custom QR Codes Instantly',
-    description: 'Generate custom QR codes quickly and easily with our free online QR code generator. Perfect for websites, business cards, and more. Customize colors, embed logos, and add UTM parameters for tracking.',
-    // images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'QR Code Generator' }],
-  },
+const niches = [
+  { href: '/wifi-qr-code-generator', label: 'WiFi QR code', desc: 'Share your network — guests scan to join, no typing.', icon: Wifi },
+  { href: '/vcard-qr-code-generator', label: 'vCard QR code', desc: 'Digital business card — scan to save your contact.', icon: User },
+  { href: '/url-qr-code-generator', label: 'URL QR code', desc: 'Link to any web page, with optional UTM tracking.', icon: Globe },
+  { href: '/calendar-event-qr-code-generator', label: 'Event QR code', desc: 'Add an event to a calendar with one scan.', icon: Calendar },
+  { href: '/google-maps-qr-code-generator', label: 'Location QR code', desc: 'Drop a pin in Google Maps or the native maps app.', icon: MapPin },
+  { href: '/bitcoin-qr-code-generator', label: 'Bitcoin QR code', desc: 'BIP-21 payment QR with amount and label.', icon: Bitcoin },
+  { href: '/menu-qr-code-generator', label: 'Menu QR code', desc: 'For restaurants, cafés and bars — one scan to the menu.', icon: Utensils },
+  { href: '/pdf-qr-code-generator', label: 'PDF QR code', desc: 'Manual, brochure, contract — share PDFs instantly.', icon: FileText },
+  { href: '/paypal-qr-code-generator', label: 'PayPal QR code', desc: 'Get paid with a PayPal.Me link.', icon: DollarSign },
+  { href: '/spotify-qr-code-generator', label: 'Spotify QR code', desc: 'Share a track, album or playlist.', icon: Music },
+  { href: '/app-store-qr-code-generator', label: 'App Store QR code', desc: 'Drive app installs from offline channels.', icon: Smartphone },
+  { href: '/email-qr-code-generator', label: 'Email QR code', desc: 'Pre-fill recipient, subject and body in one tap.', icon: Mail },
+  { href: '/sms-qr-code-generator', label: 'SMS QR code', desc: 'Pre-fill a text message to a number.', icon: MessageSquare },
+  { href: '/phone-qr-code-generator', label: 'Phone QR code', desc: 'Tap to call — perfect for service businesses.', icon: Phone },
+]
+
+const howToJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'How to make a QR code',
+  description: 'Generate a free, custom QR code for a URL, WiFi network, vCard, calendar event, location, Bitcoin payment, SMS, email or phone number.',
+  totalTime: 'PT1M',
+  step: [
+    {
+      '@type': 'HowToStep',
+      position: 1,
+      name: 'Pick the QR type',
+      text: 'Choose the type of content the QR will encode — URL, WiFi, vCard, calendar event, location, Bitcoin, plain text, SMS, email or phone.',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 2,
+      name: 'Fill in the fields',
+      text: 'Enter the relevant fields for the chosen type. The QR code re-renders live as you type — there is no submit step.',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 3,
+      name: 'Customize appearance',
+      text: 'Optionally change foreground / background colors, scale, margin, transparency, and upload a logo to embed in the center.',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 4,
+      name: 'Download',
+      text: 'Click the Download button to save as PNG, or right-click the QR canvas to copy or save as SVG.',
+    },
+  ],
 }
 
 export default function Home() {
   return (
     <div className="font-[family-name:var(--font-geist-sans)]">
       <main className="container max-w-screen-lg mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">QR Code Generator</h1>
-        <p className="mb-6 text-lg">
-          Create custom QR codes for your business, personal projects, or marketing campaigns. Our easy-to-use generator allows you to customize colors, embed logos, and add UTM parameters for tracking. Perfect for websites, business cards, product packaging, and more.
+        <h1 className="text-3xl font-bold mb-4">Free QR Code Generator</h1>
+        <p className="mb-6 text-lg text-muted-foreground">
+          Generate QR codes for URLs, WiFi networks, vCards, SMS, email and phone numbers. Customize colors, embed a logo,
+          add UTM tracking — all in your browser, no sign-up.
         </p>
+
+        <AdSlot slot="home-top" className="mb-6" />
+
         <QRCodeGenerator />
+
+        <AdSlot slot="home-mid" className="my-10" />
+
         <section className="mt-12">
-          <h2 className="text-2xl font-semibold mb-4">Why Use Our QR Code Generator?</h2>
-          <ul className="list-disc pl-6 space-y-2">
-            <li>Easy to use interface</li>
-            <li>Customizable colors and designs</li>
-            <li>Option to embed logos or images</li>
-            <li>Advanced features like UTM parameter generation</li>
-            <li>High-quality, scannable QR codes</li>
-            <li>Free to use</li>
+          <h2 className="text-2xl font-semibold mb-4">Pick the right QR type</h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {niches.map(({ href, label, desc, icon: Icon }) => (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="block rounded-md border p-4 hover:bg-accent hover:text-accent-foreground transition-colors h-full"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className="h-5 w-5" />
+                    <span className="font-semibold">{label}</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{desc}</p>
+                </Link>
+              </li>
+            ))}
           </ul>
         </section>
 
-        {/* <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div> */}
+        <section className="mt-12">
+          <h2 className="text-2xl font-semibold mb-4">Why use this generator?</h2>
+          <ul className="list-disc pl-6 space-y-2">
+            <li>100% free, no sign-up, no watermark, no per-scan fees.</li>
+            <li>Customizable colors, transparent backgrounds, embedded logos.</li>
+            <li>UTM tracking parameters baked into URL QR codes for marketing campaigns.</li>
+            <li>High error-correction support so your QR code stays scannable even when partially obscured.</li>
+            <li>Generated entirely in your browser — your data never leaves your device.</li>
+            <li>PNG and SVG export — SVG stays sharp at any print size.</li>
+          </ul>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-2xl font-semibold mb-4">How to make a QR code</h2>
+          <ol className="list-decimal pl-6 space-y-2">
+            <li>Pick the QR type that matches your content (URL, WiFi, vCard, etc.).</li>
+            <li>Fill in the relevant fields. The QR code re-renders live as you type.</li>
+            <li>Tweak colors, scale, margin and optionally upload a logo.</li>
+            <li>Right-click the QR code to save it, or click the area to copy to clipboard.</li>
+          </ol>
+        </section>
+
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
+        />
       </main>
-      {/* <footer className="container mx-auto p-20 row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer> */}
     </div>
-  );
+  )
 }
